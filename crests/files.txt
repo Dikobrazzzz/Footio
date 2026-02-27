@@ -1,0 +1,14 @@
+Real_Madrid|it.wikipedia.org|Real_Madrid_CF_logo.svg
+Barcelona|en.wikipedia.org|FC_Barcelona_(crest).svg
+Man_United|sco.wikipedia.org|Manchester_United_FC_crest.svg
+Liverpool|it.wikipedia.org|Liverpool_FC_logo.svg
+Chelsea|it.wikipedia.org|Chelsea_FC_logo.svg
+Arsenal|sco.wikipedia.org|Arsenal_FC.svg
+Man_City|sco.wikipedia.org|Manchester_City_FC_badge.svg
+Bayern|en.wikipedia.org|FC_Bayern_München_logo_(2024).svg
+PSG|en.wikipedia.org|Paris_Saint-Germain_F.C..svg
+Juventus|en.wikipedia.org|Juventus_FC_-_logo_black_(Italy,_2020).svg
+AC_Milan|en.wikipedia.org|Logo_of_AC_Milan.svg
+Inter|en.wikipedia.org|FC_Internazionale_Milano_2021.svg
+Atletico|fr.wikipedia.org|Logo_Atlético_Madrid_2017.svg
+Tottenham|it.wikipedia.org|Tottenham_Hotspur_Logo.svg

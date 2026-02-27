@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Footio - Daily Football Games</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600&display=block" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        :root{--bg:#0a0f1a;--bg2:#1a2332;--bg3:#243044;--green:#10b981;--gold:#f59e0b;--blue:#3b82f6;--red:#ef4444;--cyan:#06b6d4;--text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;--border:rgba(255,255,255,0.08)}
+        *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+        header{position:fixed;top:0;left:0;right:0;z-index:100;padding:.7rem 1.2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);backdrop-filter:blur(10px);background:rgba(10,15,26,.95)}
+        .logo{display:flex;align-items:center;gap:.5rem;cursor:pointer}.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem}.logo-text{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px}
+        .header-r{display:flex;align-items:center;gap:.6rem}.profile-btn{width:34px;height:34px;background:var(--bg2);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem}.profile-btn:hover{background:var(--green)}
+        main{max-width:520px;margin:0 auto;padding:5.5rem 1rem 2rem}
+        .ad-left,.ad-right{position:fixed;top:50%;transform:translateY(-50%);width:300px;height:700px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.85rem;text-align:center}
+        .ad-left{left:calc(25% - 280px)}.ad-right{right:calc(25% - 280px)}
+        @media(max-width:1200px){.ad-left,.ad-right{display:none}}.page{display:none}.page.active{display:block}
+        .hero{text-align:center;margin-bottom:1.2rem;padding-top:.3rem}
+        .hero h1{font-family:'Bebas Neue',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.02em;line-height:1.1}
+        .hero h1 .w-daily,.hero h1 .w-games{letter-spacing:3px}
+        .hero h1 .w-football{letter-spacing:0;color:var(--green)}
+        .hero p{color:rgba(255,255,255,0.65);font-size:15px;line-height:1.3;margin-top:.4rem}
+        .games-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+        @media(max-width:500px){.games-grid{grid-template-columns:repeat(2,1fr)}}
+        .game-card{background:var(--bg2);border-radius:12px;border:1px solid var(--border);cursor:pointer;transition:all .3s ease;position:relative;overflow:hidden;display:flex;flex-direction:column}
+        .game-card:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 8px 30px rgba(0,0,0,.4),0 0 16px rgba(16,185,129,.3);border-color:var(--green)}
+        .game-cover-wrap{position:relative;width:100%;aspect-ratio:3/4;overflow:hidden}
+        .game-cover{width:100%;height:100%;object-fit:cover;display:block;opacity:.65}
+        .game-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,15,0.55) 0%,rgba(10,10,15,0.15) 100%)}
+        .game-info{padding:.5rem .5rem .55rem;text-align:center;display:flex;flex-direction:column;flex:1}
+        .game-title{font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:1px}
+        .game-desc{font-size:10px;font-weight:400;color:rgba(255,255,255,0.55);margin-top:2px;line-height:1.3;margin-bottom:6px}
+        .play-btn{display:flex;align-items:center;justify-content:center;gap:5px;height:32px;padding:0 .8rem;background:linear-gradient(135deg,#10b981,#059669);color:white;border-radius:9999px;font-size:11px;font-weight:600;margin-top:auto;transition:all .2s;border:none;cursor:pointer;width:100%}
+        .game-card:hover .play-btn{transform:scale(1.03);filter:brightness(1.1)}
+        .game-card:active .play-btn{transform:scale(0.96);filter:brightness(0.85)}
+        .badge{position:absolute;top:10px;right:10px;padding:0 10px;border-radius:9999px;height:22px;line-height:22px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;z-index:3}
+        .badge-d{background:#0A3F2C;color:#00FF9D;border:1px solid #00FF9D33}
+        .badge-n{background:rgba(255,215,0,0.12);color:#FFD700;border:1px solid rgba(255,215,0,0.3)}
+        .badge-featured{background:transparent;color:#00FF9D;border:1px solid #00FF9D;top:10px;left:10px;right:auto}
+        .game-container{max-width:500px;margin:0 auto}
+        .back-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:9999px;color:var(--text2);font-size:.8rem;cursor:pointer;transition:.2s;margin-bottom:1rem}.back-btn:hover{background:rgba(255,255,255,.13);color:var(--text)}
+        .intro{background:linear-gradient(135deg,var(--bg2),var(--bg));border-radius:14px;padding:1.3rem;margin-bottom:1.3rem;border:1px solid var(--border);text-align:center}
+        .intro-icon{font-size:2.5rem;margin-bottom:.6rem}.intro h1{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;margin-bottom:.4rem}
+        .intro-rules{background:var(--bg);border-radius:9px;padding:.9rem;margin:.9rem 0;text-align:left}.intro-rules h3{font-size:.8rem;color:var(--green);margin-bottom:.4rem}.intro-rules ul{list-style:none;font-size:.75rem;color:var(--text2)}.intro-rules li{padding:.25rem 0;padding-left:1rem;position:relative}.intro-rules li::before{content:'•';position:absolute;left:0;color:var(--green)}
+        .start-btn{padding:.8rem 1.8rem;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:9px;color:white;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;margin-top:.4rem}.start-btn:hover{transform:scale(1.05)}
+        .board{background:var(--bg2);border-radius:11px;padding:.9rem;border:1px solid var(--border);margin-bottom:.9rem}
+        .score-box{text-align:center;padding:.6rem;background:var(--bg);border-radius:7px;margin-bottom:.9rem}.score-val{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--green)}.score-lbl{font-size:.7rem;color:var(--text3)}
+        .btn{padding:.55rem 1.1rem;border-radius:7px;font-size:.8rem;font-weight:500;cursor:pointer;border:none}.btn-p{background:linear-gradient(135deg,#10b981,#059669);color:white}.btn-s{background:var(--bg2);border:1px solid var(--border);color:var(--text2)}.btn-ig{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:white}.btn:hover{transform:translateY(-2px)}
+        .controls{display:flex;justify-content:center;gap:.6rem;flex-wrap:wrap;margin-top:.9rem}
+        .input{width:100%;padding:.8rem;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.9rem;outline:none}.input:focus{border-color:var(--green)}
+        .ac-wrap{position:relative;margin-bottom:.9rem}.ac-list{position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:7px;margin-top:.3rem;max-height:160px;overflow-y:auto;z-index:50;display:none}.ac-list.show{display:block}.ac-item{padding:.5rem .8rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;border-bottom:1px solid var(--border);font-size:.8rem}.ac-item:hover{background:var(--bg3)}.ac-item:last-child{border-bottom:none}
+        .leg-form{display:flex;flex-direction:column;gap:.7rem}.leg-row{display:flex;justify-content:center;gap:.6rem}.leg-slot{width:90px;height:110px;background:var(--bg);border:2px dashed var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}.leg-slot.filled{border-style:solid;border-color:var(--green);background:rgba(16,185,129,.1)}.leg-slot.active{border-color:var(--gold);box-shadow:0 0 10px rgba(245,158,11,.3)}.leg-slot .fl{font-size:2rem}.leg-slot .cn{font-size:.95rem;color:var(--text3)}.leg-slot .pn{font-size:.65rem;color:var(--green);max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .grid-b{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,80px);gap:3px}.grid-h{background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.75rem;color:var(--text2);text-align:center;padding:.3rem;border-radius:4px}.grid-h.corner{background:transparent}.grid-c{background:var(--bg);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem;text-align:center}.grid-c:hover{background:var(--bg3)}.grid-c.filled{background:rgba(16,185,129,.15);cursor:default}
+        .word-b{display:flex;flex-direction:column;gap:.4rem}.word-r{display:grid;grid-template-columns:repeat(6,1fr);gap:.4rem}.word-c{background:var(--bg);border-radius:8px;padding:.6rem .2rem;text-align:center;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.word-c.correct{background:rgba(16,185,129,.3)}.word-c.partial{background:rgba(245,158,11,.3)}.word-c.wrong{background:rgba(239,68,68,.2)}.word-c .lbl{font-size:2.6rem;color:var(--text3)}.word-c .val{font-size:1rem;font-weight:600}.word-c.sm{min-height:38px;padding:.25rem .15rem;border-radius:6px}.word-c.sm .val{font-size:.65rem}
+        .golt-sc{font-family:'Bebas Neue',sans-serif;font-size:3.5rem}.golt-sc.hot{color:var(--red)}.golt-sc.warm{color:var(--gold)}.golt-sc.cold{color:var(--blue)}.golt-bar{height:7px;background:var(--bg);border-radius:4px;overflow:hidden;margin:.8rem 0}.golt-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--gold),var(--red))}.golt-g{max-height:130px;overflow-y:auto}.golt-guess{display:flex;justify-content:space-between;padding:.35rem .5rem;background:var(--bg);border-radius:5px;margin-bottom:.25rem;font-size:.75rem}
+        .pyr-cat{text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);margin-bottom:.8rem}.pyr-player{background:var(--bg);border-radius:7px;padding:.8rem;text-align:center;margin-bottom:.8rem}.pyr-name{font-family:'Bebas Neue',sans-serif;font-size:1.2rem}.pyr-team{font-size:.75rem;color:var(--text3)}.pyr-hint{text-align:center;font-size:.75rem;color:var(--text2);margin-bottom:.8rem}.pyr-board{display:flex;flex-direction:column;align-items:center;gap:.35rem;margin-bottom:.8rem}.pyr-row{display:flex;gap:.35rem;padding:.3rem;border-radius:8px;transition:.3s}.pyr-row.highlight{background:rgba(245,158,11,.15);border:2px solid var(--gold);box-shadow:0 0 15px rgba(245,158,11,.3)}.pyr-slot{width:80px;height:48px;background:var(--bg);border:2px dashed var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.65rem;cursor:pointer}.pyr-slot.filled{border-style:solid;background:rgba(16,185,129,.1);border-color:var(--green)}
+        .imp-cat{text-align:center;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--cyan);margin-bottom:.8rem;padding:.6rem;background:var(--bg);border-radius:7px}.imp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem}.imp-card{background:var(--bg);border-radius:7px;padding:.5rem;text-align:center;cursor:pointer;border:2px solid transparent}.imp-card:hover{background:var(--bg3)}.imp-card.selected{border-color:var(--cyan);background:rgba(6,182,212,.1)}.imp-card.correct{background:rgba(16,185,129,.2);border-color:var(--green)}.imp-card.wrong{background:rgba(239,68,68,.2);border-color:var(--red)}.imp-card .fl{font-size:1.3rem}.imp-card .nm{font-size:.85rem;margin-top:.2rem}
+        .profile-h{text-align:center;padding:1.4rem;background:linear-gradient(135deg,var(--bg2),var(--bg));border-radius:14px;margin-bottom:1rem;border:1px solid var(--border)}.avatar-wrap{position:relative;width:80px;height:80px;margin:0 auto .8rem;cursor:pointer}.avatar{width:80px;height:80px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.4rem;overflow:hidden}.avatar-edit{position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;border:2px solid var(--bg)}.profile-name-display{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem}.profile-name-display:hover{color:var(--green)}.profile-name-edit{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;background:var(--bg3);border:1px solid var(--green);border-radius:8px;color:var(--text);padding:.3rem .6rem;text-align:center;width:180px;display:none}.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:.8rem}.p-stat{text-align:center}.p-stat-v{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--green)}.p-stat-l{font-size:.65rem;color:var(--text3)}
+        .auth-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem}.auth-title{font-size:.75rem;color:var(--text3);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:.5px}.auth-email-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.5rem .7rem;color:var(--text);font-size:.85rem;margin-bottom:.5rem;outline:none}.auth-email-input:focus{border-color:var(--green)}.auth-user-info{display:flex;align-items:center;gap:.6rem;font-size:.8rem;color:var(--text2)}.auth-user-email{color:var(--green);font-weight:500}
+        .lb{background:var(--bg2);border-radius:11px;padding:.9rem;border:1px solid var(--border)}.lb-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;margin-bottom:.8rem}.lb-item{display:flex;align-items:center;gap:.6rem;padding:.5rem;background:var(--bg);border-radius:7px;margin-bottom:.35rem}.lb-item.me{background:rgba(16,185,129,.1);border:1px solid var(--green)}.lb-rank{width:25px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:.8rem}.lb-rank.g{background:linear-gradient(135deg,#f59e0b,#d97706)}.lb-rank.s{background:linear-gradient(135deg,#9ca3af,#6b7280)}.lb-rank.b{background:linear-gradient(135deg,#d97706,#92400e)}.lb-rank.n{background:var(--bg2)}.lb-name{flex:1;font-size:.8rem}.lb-score{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--green)}
+        .modal-o{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:200;padding:1rem}.modal-o.show{display:flex}.modal{position:relative;background:var(--bg2);border-radius:14px;padding:1.3rem;max-width:300px;width:100%;text-align:center;border:1px solid var(--border)}.modal h2{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;margin-bottom:.4rem}.modal-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:var(--text3);font-size:1rem;line-height:28px;text-align:center;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center}.modal-close:hover{background:rgba(255,255,255,.18);color:var(--text)}
+        .share-card{background:linear-gradient(135deg,#0a0f1a,#1a2332);border-radius:14px;padding:1.2rem;margin-bottom:.8rem;border:2px solid var(--green)}.share-game{font-size:.75rem;color:var(--green)}.share-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem}.share-score{font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--green)}.share-lbl{font-size:.7rem;color:var(--text3)}.share-site{font-size:.65rem;color:var(--text2);margin-top:.6rem}
+        .modal p{color:var(--text2);margin-bottom:.8rem;font-size:.85rem}.modal-btns{display:flex;flex-direction:column;gap:.4rem}
+        @media(max-width:450px){.games-grid{grid-template-columns:repeat(2,1fr)}.leg-slot{width:68px;height:86px}.grid-b{grid-template-columns:42px repeat(3,1fr)}.pyr-slot{width:52px;height:32px;font-size:.45rem}}
+        .daily-score{display:flex;align-items:center;gap:.4rem;padding:.4rem .8rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px}
+        .daily-score-label{font-size:.65rem;color:var(--text3)}
+        .daily-score-value{font-family:'Bebas Neue',sans-serif;font-size:.9rem;color:var(--text2);letter-spacing:1px}
+    </style>
+</head>
+<body>
+<header>
+    <div class="logo" onclick="showPage('home')"><div class="logo-icon">⚽</div><span class="logo-text">FOOTIO</span></div>
+    <div class="header-r">
+        <div class="daily-score">
+            <span class="daily-score-value" id="daily-score-wins">🟢 0</span>
+            <span class="daily-score-label" style="font-size:.7rem;color:var(--border)">|</span>
+            <span class="daily-score-value" id="daily-score-losses">🔴 0</span>
+        </div>
+        <button class="profile-btn" onclick="localStorage.removeItem('played');location.reload()" title="Unlock all games">🔓</button>
+        <div class="profile-btn" onclick="showPage('profile')">👤</div>
+    </div>
+</header>
+<div class="ad-left">AD 300×700</div>
+<div class="ad-right">AD 300×700</div>
+<main>
+    <div id="page-home" class="page active">
+        <section class="hero"><h1><span class="w-daily">DAILY</span> <span class="w-football">FOOTBALL</span> <span class="w-games">GAMES</span></h1><p id="t-hd">6 daily games&nbsp;•&nbsp;test your knowledge&nbsp;•&nbsp;compete with friends</p></section>
+        <div class="games-grid">
+            <div class="game-card" onclick="showPage('legacy')"><span class="badge badge-d">Daily</span><div class="game-cover-wrap"><img class="game-cover" src="/images/games/legacy.jpg" alt="Legacy 11" loading="eager"><div class="game-cover-overlay"></div></div><div class="game-info"><div class="game-title">LEGACY 11</div><div class="game-desc">Build a legendary XI</div><button class="play-btn">Play</button></div></div>
+            <div class="game-card" onclick="showPage('grid')"><span class="badge badge-d">Daily</span><div class="game-cover-wrap"><img class="game-cover" src="/images/games/grid.jpg" alt="Grid" loading="eager"><div class="game-cover-overlay"></div></div><div class="game-info"><div class="game-title">GRID</div><div class="game-desc">Club × Club match</div><button class="play-btn">Play</button></div></div>
+            <div class="game-card" onclick="showPage('wordle')"><span class="badge badge-d">Daily</span><div class="game-cover-wrap"><img class="game-cover" src="/images/games/wordle.jpg" alt="Wordle" loading="eager"><div class="game-cover-overlay"></div></div><div class="game-info"><div class="game-title">WORDLE</div><div class="game-desc">Guess the player's name</div><button class="play-btn">Play</button></div></div>
+            <div class="game-card" onclick="showPage('goltexto')"><span class="badge badge-n">New</span><div class="game-cover-wrap"><img class="game-cover" src="/images/games/goltexto.jpg" alt="Goltexto" loading="eager"><div class="game-cover-overlay"></div></div><div class="game-info"><div class="game-title">GOLTEXTO</div><div class="game-desc">Guess the goal text</div><button class="play-btn">Play</button></div></div>
+            <div class="game-card" onclick="showPage('pyramid')"><span class="badge badge-d">Daily</span><div class="game-cover-wrap"><img class="game-cover" src="/images/games/pyramid.jpg" alt="Pyramid" loading="eager"><div class="game-cover-overlay"></div></div><div class="game-info"><div class="game-title">PYRAMID</div><div class="game-desc">Rank players in a pyramid</div><button class="play-btn">Play</button></div></div>
+            <div class="game-card" onclick="showPage('impostor')"><span class="badge badge-n">New</span><div class="game-cover-wrap"><img class="game-cover" src="/images/games/impostor.jpg" alt="Impostor" loading="eager"><div class="game-cover-overlay"></div></div><div class="game-info"><div class="game-title">IMPOSTOR</div><div class="game-desc">Find the fake among 11</div><button class="play-btn">Play</button></div></div>
+        </div>
+    </div>
+    <div id="page-profile" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="profile-h">
+            <div class="avatar-wrap" onclick="document.getElementById('avatar-input').click()">
+                <div class="avatar" id="prof-avatar"><span id="prof-avatar-emoji">⚽</span></div>
+                <div class="avatar-edit">📷</div>
+            </div>
+            <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+            <div>
+                <div class="profile-name-display" id="prof-name-display" onclick="editProfName()">
+                    <span id="prof-name-text">PLAYER</span> <span style="font-size:.8rem;opacity:.5">✎</span>
+                </div>
+                <input class="profile-name-edit" id="prof-name-input" maxlength="20"
+                    onblur="saveProfName()" onkeydown="if(event.key==='Enter')saveProfName()">
+            </div>
+            <div class="profile-stats">
+                <div class="p-stat"><div class="p-stat-v" id="s-g">0</div><div class="p-stat-l">Games</div></div>
+                <div class="p-stat"><div class="p-stat-v" id="s-w">0</div><div class="p-stat-l">Wins</div></div>
+                <div class="p-stat"><div class="p-stat-v" id="s-s">0</div><div class="p-stat-l">Streak🔥</div></div>
+            </div>
+        </div>
+
+        <div class="auth-box">
+            <div class="auth-title">Account</div>
+            <div id="auth-guest-panel">
+                <p style="font-size:.8rem;color:var(--text2);margin-bottom:.7rem">Sign in to sync your progress across devices</p>
+                <input class="auth-email-input" type="email" id="auth-email-inp" placeholder="your@email.com">
+                <button class="btn btn-p" id="auth-send-btn" onclick="sbSignIn()" style="width:100%;height:36px;font-size:.8rem">Send Magic Link</button>
+            </div>
+            <div id="auth-user-panel" style="display:none">
+                <div class="auth-user-info">
+                    <span>✓ Signed in as</span>
+                    <span class="auth-user-email" id="auth-email-disp"></span>
+                    <button class="btn" onclick="sbSignOut()" style="margin-left:auto;padding:.2rem .6rem;font-size:.7rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer">Sign Out</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="lb"><div class="lb-title">🏆 LEADERBOARD</div><div id="lb-list"></div></div>
+    </div>
+    <div id="page-legacy" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="game-container">
+            <div class="intro" id="leg-i"><div class="intro-icon">🏆</div><h1>LEGACY 11</h1><div class="intro-rules"><h3>📋 How to Play</h3><ul><li>Build a starting 11 using LEGENDARY players</li><li>Each player must be from a different country</li><li>Countries appear in random order</li><li>Complete the full lineup to win!</li></ul></div><button class="start-btn" onclick="startLeg()">START GAME</button></div>
+            <div id="leg-g" style="display:none"><div class="score-box"><div class="score-val" id="leg-sc">0/11</div><div class="score-lbl">Legends Added</div></div><div class="board"><div class="leg-form" id="leg-f"></div></div><div class="ac-wrap"><input class="input" id="leg-in" placeholder="Search legend..."><div class="ac-list" id="leg-ac"></div></div></div>
+        </div>
+    </div>
+    <div id="page-grid" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="game-container">
+            <div class="intro" id="grid-i"><div class="intro-icon">📊</div><h1>FOOTBALL GRID</h1><div class="intro-rules"><h3>📋 How to Play</h3><ul><li>Find players who played for BOTH clubs</li><li>Rows and columns show different teams</li><li>You have 9 guesses total</li><li>Fill all 9 cells to win!</li></ul></div><button class="start-btn" onclick="startGrid()">START GAME</button></div>
+            <div id="grid-g" style="display:none"><div class="score-box"><div class="score-val" id="grid-sc">9</div><div class="score-lbl">Guesses Left</div></div><div class="board"><div class="grid-b" id="grid-b"></div></div><div class="ac-wrap" id="grid-iw" style="display:none"><input class="input" id="grid-in" placeholder="Search player..."><div class="ac-list" id="grid-ac"></div></div></div>
+        </div>
+    </div>
+    <div id="page-wordle" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="game-container">
+            <div class="intro" id="word-i"><div class="intro-icon">🔤</div><h1>FOOTBALL WORDLE</h1><div class="intro-rules"><h3>📋 How to Play</h3><ul><li>Guess the mystery player in 8 attempts</li><li>🟢 Green = correct attribute</li><li>🟡 Yellow = close (age ±2)</li><li>🔴 Red = wrong attribute</li></ul></div><button class="start-btn" onclick="startWord()">START GAME</button></div>
+            <div id="word-g" style="display:none"><div class="score-box"><div class="score-val" id="word-at">8</div><div class="score-lbl">Attempts Left</div></div><div class="board"><div class="word-b" id="word-b"></div></div><div class="ac-wrap"><input class="input" id="word-in" placeholder="Search player..."><div class="ac-list" id="word-ac"></div></div></div>
+        </div>
+    </div>
+    <div id="page-goltexto" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="game-container">
+            <div class="intro" id="golt-i"><div class="intro-icon">🎯</div><h1>GOLTEXTO</h1><div class="intro-rules"><h3>📋 How to Play</h3><ul><li>Guess the secret player</li><li>Algorithm shows closeness (0-1000)</li><li>🔴 Hot = close, 🔵 Cold = far</li><li>Unlimited guesses - get 1000!</li></ul></div><button class="start-btn" onclick="startGolt()">START GAME</button></div>
+            <div id="golt-g" style="display:none"><div class="score-box"><div class="golt-sc" id="golt-s">0</div><div class="golt-bar"><div class="golt-fill" id="golt-f" style="width:0%"></div></div><div class="score-lbl">Best Score</div></div><div class="board"><div class="golt-g" id="golt-gu"></div></div><div class="ac-wrap"><input class="input" id="golt-in" placeholder="Search player..."><div class="ac-list" id="golt-ac"></div></div></div>
+        </div>
+    </div>
+    <div id="page-pyramid" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="game-container">
+            <div class="intro" id="pyr-i"><div class="intro-icon">🔺</div><h1>PYRAMID</h1><div class="intro-rules"><h3>📋 How to Play</h3><ul><li>Rank 10 players by category</li><li>Top = highest, Bottom = lowest</li><li>Players appear one by one</li><li>Place in correct position!</li></ul></div><button class="start-btn" onclick="startPyr()">START GAME</button></div>
+            <div id="pyr-g" style="display:none"><div class="pyr-cat" id="pyr-c"></div><div class="pyr-player" id="pyr-p"></div><div class="pyr-hint" id="pyr-hint">Feel free to switch places and hit submit!</div><div class="board"><div class="pyr-board" id="pyr-b"></div></div><div class="controls"><button class="btn btn-p" onclick="subPyr()">Submit</button></div></div>
+        </div>
+    </div>
+    <div id="page-impostor" class="page">
+        <button class="back-btn" onclick="showPage('home')">← Back</button>
+        <div class="game-container">
+            <div class="intro" id="imp-i"><div class="intro-icon">🕵️</div><h1>IMPOSTOR</h1><div class="intro-rules"><h3>📋 How to Play</h3><ul><li>Category shown (e.g. "Barcelona")</li><li>Select ALL matching players</li><li>Avoid impostors!</li><li>Wrong pick = game over!</li></ul></div><button class="start-btn" onclick="startImp()">START GAME</button></div>
+            <div id="imp-g" style="display:none"><div class="imp-cat" id="imp-c"></div><div class="board"><div class="imp-grid" id="imp-gr"></div></div><div style="text-align:center;font-size:.8rem;color:var(--text2);margin:.6rem 0">Selected: <span id="imp-sel">0</span>/<span id="imp-tot">0</span></div><div class="controls"><button class="btn btn-p" onclick="subImp()">Submit</button></div><div id="imp-result" style="display:none;background:var(--bg);border-radius:9px;padding:1rem;margin-top:1rem;text-align:center"><div id="imp-result-text" style="font-size:.85rem;color:var(--text2);line-height:1.6"></div></div></div>
+        </div>
+    </div>
+</main>
+<div class="modal-o" id="modal-o">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <h2 id="m-t">🎉</h2>
+        <div class="share-card"><div class="share-game" id="sh-g">GAME</div><div class="share-title">MY RESULT</div><div class="share-score" id="sh-s">0</div><div class="share-lbl" id="sh-l"></div><div class="share-site">⚽ footio.com</div></div>
+        <p id="m-m"></p>
+        <div class="modal-btns"><button class="btn btn-ig" onclick="shareIG()">📸 Share to Instagram</button><button class="btn btn-p" onclick="closeModal()">Play Again</button></div>
+    </div>
+</div>
+<script>
+const legends=[{name:"Lev Yashin",country:"Russia",flag:"🇷🇺",team:"Dynamo Moscow",goals:0,trophies:10,rating:95,photo:"/images/players/lev-yashin.jpg"},{name:"Bobby Moore",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"West Ham",goals:24,trophies:5,rating:92,photo:"/images/players/bobby-moore.jpg"},{name:"Ruud Gullit",country:"Netherlands",flag:"🇳🇱",team:"AC Milan",goals:245,trophies:12,rating:93,photo:"/images/players/ruud-gullit.jpg"},{name:"Luis Figo",country:"Portugal",flag:"🇵🇹",team:"Real Madrid",goals:164,trophies:16,rating:92,photo:"/images/players/luis-figo.jpg"},{name:"Iker Casillas",country:"Spain",flag:"🇪🇸",team:"Real Madrid",goals:0,trophies:19,rating:92,photo:"/images/players/iker-casillas.jpg"},{name:"Sergio Ramos",country:"Spain",flag:"🇪🇸",team:"Real Madrid",goals:105,trophies:22,rating:91,photo:"/images/players/sergio-ramos.jpg"},{name:"Eric Cantona",country:"France",flag:"🇫🇷",team:"Man United",goals:185,trophies:11,rating:91,photo:"/images/players/eric-cantona.jpg"},{name:"Paul Scholes",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"Man United",goals:155,trophies:25,rating:90,photo:"/images/players/paul-scholes.jpg"},{name:"Javier Zanetti",country:"Argentina",flag:"🇦🇷",team:"Inter",goals:51,trophies:16,rating:90,photo:"/images/players/javier-zanetti.jpg"},{name:"Philipp Lahm",country:"Germany",flag:"🇩🇪",team:"Bayern",goals:42,trophies:20,rating:91,photo:"/images/players/philipp-lahm.jpg"},{name:"Bastian Schweinsteiger",country:"Germany",flag:"🇩🇪",team:"Bayern",goals:86,trophies:23,rating:90,photo:"/images/players/bastian-schweinsteiger.jpg"},{name:"Alessandro Del Piero",country:"Italy",flag:"🇮🇹",team:"Juventus",goals:346,trophies:19,rating:91,photo:"/images/players/alessandro-del-piero.jpg"},{name:"Pavel Nedved",country:"Czech Rep.",flag:"🇨🇿",team:"Juventus",goals:111,trophies:14,rating:90,photo:"/images/players/pavel-nedved.jpg"},{name:"Alessandro Nesta",country:"Italy",flag:"🇮🇹",team:"AC Milan",goals:18,trophies:17,rating:91,photo:"/images/players/alessandro-nesta.jpg"},{name:"Andriy Shevchenko",country:"Ukraine",flag:"🇺🇦",team:"AC Milan",goals:356,trophies:16,rating:92,photo:"/images/players/andriy-shevchenko.jpg"},{name:"Ryan Giggs",country:"Wales",flag:"🏴󠁧󠁢󠁷󠁬󠁳󠁿",team:"Man United",goals:168,trophies:36,rating:90,photo:"/images/players/ryan-giggs.jpg"},{name:"Steven Gerrard",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"Liverpool",goals:186,trophies:11,rating:91,photo:"/images/players/steven-gerrard.jpg"},{name:"Robbie Keane",country:"Ireland",flag:"🇮🇪",team:"Tottenham",goals:316,trophies:8,rating:87,photo:"/images/players/robbie-keane.jpg"},{name:"Pelé",country:"Brazil",flag:"🇧🇷",team:"Santos",goals:757,trophies:26,rating:98,photo:"/images/players/pele.jpg"},{name:"Maradona",country:"Argentina",flag:"🇦🇷",team:"Napoli",goals:345,trophies:11,rating:97,photo:"/images/players/maradona.jpg"},{name:"Cruyff",country:"Netherlands",flag:"🇳🇱",team:"Barcelona",goals:401,trophies:21,rating:96,photo:"/images/players/cruyff.jpg"},{name:"Beckenbauer",country:"Germany",flag:"🇩🇪",team:"Bayern",goals:111,trophies:23,rating:95,photo:"/images/players/beckenbauer.jpg"},{name:"Zidane",country:"France",flag:"🇫🇷",team:"Real Madrid",goals:156,trophies:16,rating:96,photo:"/images/players/zidane.jpg"},{name:"Ronaldinho",country:"Brazil",flag:"🇧🇷",team:"Barcelona",goals:266,trophies:18,rating:94,photo:"/images/players/ronaldinho.jpg"},{name:"Henry",country:"France",flag:"🇫🇷",team:"Arsenal",goals:411,trophies:17,rating:93,photo:"/images/players/henry.jpg"},{name:"Maldini",country:"Italy",flag:"🇮🇹",team:"AC Milan",goals:40,trophies:26,rating:94,photo:"/images/players/maldini.jpg"},{name:"Best",country:"N.Ireland",flag:"🇬🇧",team:"Man United",goals:205,trophies:7,rating:91,photo:"/images/players/best.jpg"},{name:"Di Stéfano",country:"Spain",flag:"🇪🇸",team:"Real Madrid",goals:418,trophies:22,rating:96,photo:"/images/players/di-stefano.jpg"},{name:"Eusébio",country:"Portugal",flag:"🇵🇹",team:"Benfica",goals:473,trophies:15,rating:94,photo:"/images/players/eusebio.jpg"},{name:"Platini",country:"France",flag:"🇫🇷",team:"Juventus",goals:353,trophies:15,rating:94,photo:"/images/players/platini.jpg"},{name:"Van Basten",country:"Netherlands",flag:"🇳🇱",team:"AC Milan",goals:300,trophies:13,rating:95,photo:"/images/players/van-basten.jpg"},{name:"G.Müller",country:"Germany",flag:"🇩🇪",team:"Bayern",goals:735,trophies:16,rating:95,photo:"/images/players/muller.jpg"},{name:"Charlton",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"Man United",goals:303,trophies:10,rating:93,photo:"/images/players/charlton.jpg"},{name:"R9",country:"Brazil",flag:"🇧🇷",team:"Real Madrid",goals:414,trophies:18,rating:96,photo:"/images/players/ronaldo.jpg"},{name:"Puskás",country:"Hungary",flag:"🇭🇺",team:"Real Madrid",goals:746,trophies:15,rating:95,photo:"/images/players/puskas.jpg"},{name:"Matthäus",country:"Germany",flag:"🇩🇪",team:"Bayern",goals:227,trophies:21,rating:93,photo:"/images/players/matthaus.jpg"},{name:"Iniesta",country:"Spain",flag:"🇪🇸",team:"Barcelona",goals:89,trophies:37,rating:93,photo:"/images/players/iniesta.jpg"},{name:"Xavi",country:"Spain",flag:"🇪🇸",team:"Barcelona",goals:115,trophies:33,rating:93,photo:"/images/players/xavi.jpg"},{name:"Kaká",country:"Brazil",flag:"🇧🇷",team:"AC Milan",goals:181,trophies:14,rating:92,photo:"/images/players/kaka.jpg"},{name:"Beckham",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"Man United",goals:127,trophies:19,rating:89,photo:"/images/players/beckham.jpg"},{name:"Bergkamp",country:"Netherlands",flag:"🇳🇱",team:"Arsenal",goals:194,trophies:10,rating:91,photo:"/images/players/bergkamp.jpg"},{name:"Rivaldo",country:"Brazil",flag:"🇧🇷",team:"Barcelona",goals:307,trophies:15,rating:92,photo:"/images/players/rivaldo.jpg"},{name:"Hagi",country:"Romania",flag:"🇷🇴",team:"Real Madrid",goals:276,trophies:16,rating:90,photo:"/images/players/hagi.jpg"},
+{name:"Roberto Carlos",country:"Brazil",flag:"🇧🇷",team:"Real Madrid",goals:113,trophies:18,rating:93},
+{name:"Cafu",country:"Brazil",flag:"🇧🇷",team:"AC Milan",goals:36,trophies:17,rating:91},
+{name:"Roberto Baggio",country:"Italy",flag:"🇮🇹",team:"Juventus",goals:318,trophies:9,rating:93},
+{name:"Gabriel Batistuta",country:"Argentina",flag:"🇦🇷",team:"Fiorentina",goals:336,trophies:6,rating:92},
+{name:"Didier Drogba",country:"Ivory Coast",flag:"🇨🇮",team:"Chelsea",goals:374,trophies:16,rating:91},
+{name:"Frank Lampard",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"Chelsea",goals:268,trophies:18,rating:91},
+{name:"John Terry",country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",team:"Chelsea",goals:67,trophies:17,rating:90},
+{name:"Peter Schmeichel",country:"Denmark",flag:"🇩🇰",team:"Man United",goals:0,trophies:16,rating:92},
+{name:"Oliver Kahn",country:"Germany",flag:"🇩🇪",team:"Bayern",goals:0,trophies:22,rating:92},
+{name:"Gianluigi Buffon",country:"Italy",flag:"🇮🇹",team:"Juventus",goals:0,trophies:26,rating:92},
+{name:"Carlos Valderrama",country:"Colombia",flag:"🇨🇴",team:"Atlético Junior",goals:47,trophies:7,rating:89},
+{name:"Romário",country:"Brazil",flag:"🇧🇷",team:"Barcelona",goals:768,trophies:14,rating:93},
+{name:"Hernán Crespo",country:"Argentina",flag:"🇦🇷",team:"AC Milan",goals:249,trophies:9,rating:89},
+{name:"Hristo Stoichkov",country:"Bulgaria",flag:"🇧🇬",team:"Barcelona",goals:254,trophies:14,rating:90},
+{name:"Ronaldo Koeman",country:"Netherlands",flag:"🇳🇱",team:"Barcelona",goals:253,trophies:18,rating:90},
+{name:"Michael Laudrup",country:"Denmark",flag:"🇩🇰",team:"Barcelona",goals:156,trophies:15,rating:91},
+{name:"Liam Brady",country:"Ireland",flag:"🇮🇪",team:"Arsenal",goals:79,trophies:4,rating:87},
+{name:"Roy Keane",country:"Ireland",flag:"🇮🇪",team:"Man United",goals:53,trophies:19,rating:90},
+{name:"Paolo Maldini",country:"Italy",flag:"🇮🇹",team:"AC Milan",goals:40,trophies:26,rating:95}
+];
+const players=[{name:"Lamine Yamal",clubs:["Barcelona"],country:"Spain",flag:"🇪🇸",position:"Forward",age:17,team:"Barcelona",photo:"/images/players/lamine-yamal.jpg"},{name:"Cole Palmer",clubs:["Chelsea","Man City"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:22,team:"Chelsea",photo:"/images/players/cole-palmer.jpg"},{name:"Bukayo Saka",clubs:["Arsenal"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:23,team:"Arsenal",photo:"/images/players/bukayo-saka.jpg"},{name:"Pedri",clubs:["Barcelona"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:22,team:"Barcelona",photo:"/images/players/pedri.jpg"},{name:"Gavi",clubs:["Barcelona"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:20,team:"Barcelona",photo:"/images/players/gavi.jpg"},{name:"Jamal Musiala",clubs:["Bayern"],country:"Germany",flag:"🇩🇪",position:"Midfielder",age:21,team:"Bayern",photo:"/images/players/jamal-musiala.jpg"},{name:"Phil Foden",clubs:["Man City"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:24,team:"Man City",photo:"/images/players/phil-foden.jpg"},{name:"Jude Bellingham",clubs:["Real Madrid"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:21,team:"Real Madrid",photo:"/images/players/bellingham.jpg"},{name:"Rodri",clubs:["Man City","Atlético"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:28,team:"Man City",photo:"/images/players/rodrigo-hernandez.jpg"},{name:"Bruno Fernandes",clubs:["Man United","Juventus","Sporting"],country:"Portugal",flag:"🇵🇹",position:"Midfielder",age:30,team:"Man United",photo:"/images/players/bruno-fernandes.jpg"},{name:"Trent Alexander-Arnold",clubs:["Liverpool"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:26,team:"Liverpool",photo:"/images/players/trent-alexander-arnold.jpg"},{name:"Virgil Van Dijk",clubs:["Liverpool","Southampton","Celtic"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:33,team:"Liverpool",photo:"/images/players/virgil-van-dijk.jpg"},{name:"Declan Rice",clubs:["Arsenal","Chelsea"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:26,team:"Arsenal",photo:"/images/players/declan-rice.jpg"},{name:"Martin Ødegaard",clubs:["Arsenal","Real Madrid"],country:"Norway",flag:"🇳🇴",position:"Midfielder",age:26,team:"Arsenal",photo:"/images/players/martin-degaard.jpg"},{name:"William Saliba",clubs:["Arsenal"],country:"France",flag:"🇫🇷",position:"Defender",age:23,team:"Arsenal",photo:"/images/players/william-saliba.jpg"},{name:"Achraf Hakimi",clubs:["PSG","Inter","Real Madrid"],country:"Morocco",flag:"🇲🇦",position:"Defender",age:26,team:"PSG",photo:"/images/players/achraf-hakimi.jpg"},{name:"Ousmane Dembélé",clubs:["Barcelona","PSG"],country:"France",flag:"🇫🇷",position:"Forward",age:27,team:"PSG",photo:"/images/players/ousmane-dembele.jpg"},{name:"Vitinha",clubs:["PSG","Porto"],country:"Portugal",flag:"🇵🇹",position:"Midfielder",age:25,team:"PSG",photo:"/images/players/vitor-vitinha-ferreira.jpg"},{name:"Lautaro Martínez",clubs:["Inter","Racing"],country:"Argentina",flag:"🇦🇷",position:"Forward",age:27,team:"Inter",photo:"/images/players/lautaro-martinez.jpg"},{name:"Joško Gvardiol",clubs:["Man City","Leipzig"],country:"Croatia",flag:"🇭🇷",position:"Defender",age:22,team:"Man City",photo:"/images/players/josko-gvardiol.jpg"},{name:"Raphinha",clubs:["Barcelona","Leeds"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:27,team:"Barcelona",photo:"/images/players/raphinha.jpg"},{name:"Federico Valverde",clubs:["Real Madrid"],country:"Uruguay",flag:"🇺🇾",position:"Midfielder",age:26,team:"Real Madrid",photo:"/images/players/federico-valverde.jpg"},{name:"Aurélien Tchouaméni",clubs:["Real Madrid","Monaco"],country:"France",flag:"🇫🇷",position:"Midfielder",age:24,team:"Real Madrid",photo:"/images/players/aurelien-tchouameni.jpg"},{name:"Joshua Kimmich",clubs:["Bayern"],country:"Germany",flag:"🇩🇪",position:"Midfielder",age:29,team:"Bayern",photo:"/images/players/joshua-kimmich.jpg"},{name:"Antonio Rüdiger",clubs:["Real Madrid","Chelsea"],country:"Germany",flag:"🇩🇪",position:"Defender",age:31,team:"Real Madrid",photo:"/images/players/antonio-rudiger.jpg"},{name:"Cristiano Ronaldo",clubs:["Man United","Real Madrid","Juventus"],country:"Portugal",flag:"🇵🇹",position:"Forward",age:39,team:"Al-Nassr",photo:"/images/players/cristiano-ronaldo.jpg"},{name:"Zlatan",clubs:["Barcelona","PSG","AC Milan","Inter","Man United","Juventus"],country:"Sweden",flag:"🇸🇪",position:"Forward",age:42,team:"AC Milan",photo:"/images/players/zlatan.jpg"},{name:"Beckham",clubs:["Man United","Real Madrid","PSG","AC Milan"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:49,team:"Man United",photo:"/images/players/beckham.jpg"},{name:"Henry",clubs:["Arsenal","Barcelona"],country:"France",flag:"🇫🇷",position:"Forward",age:47,team:"Arsenal",photo:"/images/players/henry.jpg"},{name:"Eto'o",clubs:["Barcelona","Inter","Chelsea"],country:"Cameroon",flag:"🇨🇲",position:"Forward",age:43,team:"Barcelona",photo:"/images/players/etoo.jpg"},{name:"Ronaldinho",clubs:["Barcelona","PSG","AC Milan"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:44,team:"Barcelona",photo:"/images/players/ronaldinho.jpg"},{name:"Suárez",clubs:["Liverpool","Barcelona","Atlético"],country:"Uruguay",flag:"🇺🇾",position:"Forward",age:37,team:"Inter Miami",photo:"/images/players/suarez.jpg"},{name:"Griezmann",clubs:["Atlético","Barcelona"],country:"France",flag:"🇫🇷",position:"Forward",age:33,team:"Atlético",photo:"/images/players/griezmann.jpg"},{name:"Neymar",clubs:["Barcelona","PSG"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:32,team:"Al-Hilal",photo:"/images/players/neymar.jpg"},{name:"Mbappé",clubs:["PSG","Real Madrid"],country:"France",flag:"🇫🇷",position:"Forward",age:25,team:"Real Madrid",photo:"/images/players/mbappe.jpg"},{name:"Fàbregas",clubs:["Arsenal","Barcelona","Chelsea"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:37,team:"Chelsea",photo:"/images/players/fabregas.jpg"},{name:"Van Persie",clubs:["Arsenal","Man United"],country:"Netherlands",flag:"🇳🇱",position:"Forward",age:41,team:"Man United",photo:"/images/players/van-persie.jpg"},{name:"Owen",clubs:["Liverpool","Real Madrid","Man United"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:45,team:"Liverpool",photo:"/images/players/owen.jpg"},{name:"Sánchez",clubs:["Barcelona","Arsenal","Man United","Inter"],country:"Chile",flag:"🇨🇱",position:"Forward",age:35,team:"Marseille",photo:"/images/players/sanchez.jpg"},{name:"Tevez",clubs:["Man United","Man City","Juventus"],country:"Argentina",flag:"🇦🇷",position:"Forward",age:40,team:"Boca",photo:"/images/players/tevez.jpg"},{name:"Kaká",clubs:["AC Milan","Real Madrid"],country:"Brazil",flag:"🇧🇷",position:"Midfielder",age:42,team:"AC Milan",photo:"/images/players/kaka.jpg"},{name:"Seedorf",clubs:["AC Milan","Real Madrid","Inter"],country:"Netherlands",flag:"🇳🇱",position:"Midfielder",age:48,team:"AC Milan",photo:"/images/players/seedorf.jpg"},{name:"Davids",clubs:["Juventus","Barcelona","Inter","AC Milan"],country:"Netherlands",flag:"🇳🇱",position:"Midfielder",age:51,team:"Juventus",photo:"/images/players/davids.jpg"},{name:"Vieira",clubs:["Arsenal","Juventus","Inter","Man City"],country:"France",flag:"🇫🇷",position:"Midfielder",age:48,team:"Arsenal",photo:"/images/players/vieira.jpg"},{name:"A.Cole",clubs:["Arsenal","Chelsea"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:43,team:"Chelsea",photo:"/images/players/cole.jpg"},{name:"Haaland",clubs:["Man City"],country:"Norway",flag:"🇳🇴",position:"Forward",age:24,team:"Man City",photo:"/images/players/haaland.jpg"},{name:"Vinícius",clubs:["Real Madrid"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:24,team:"Real Madrid",photo:"/images/players/vinicius.jpg"},{name:"Bellingham",clubs:["Real Madrid"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:21,team:"Real Madrid",photo:"/images/players/bellingham.jpg"},{name:"Messi",clubs:["Barcelona","PSG","Inter Miami"],country:"Argentina",flag:"🇦🇷",position:"Forward",age:37,team:"Inter Miami",photo:"/images/players/messi.jpg"},{name:"Salah",clubs:["Liverpool"],country:"Egypt",flag:"🇪🇬",position:"Forward",age:32,team:"Liverpool",photo:"/images/players/salah.jpg"},{name:"Lewandowski",clubs:["Bayern","Barcelona"],country:"Poland",flag:"🇵🇱",position:"Forward",age:36,team:"Barcelona",photo:"/images/players/lewandowski.jpg"},{name:"De Bruyne",clubs:["Man City","Chelsea"],country:"Belgium",flag:"🇧🇪",position:"Midfielder",age:33,team:"Man City",photo:"/images/players/de-bruyne.jpg"},{name:"Kane",clubs:["Tottenham","Bayern"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:31,team:"Bayern",photo:"/images/players/kane.jpg"},{name:"Modrić",clubs:["Real Madrid","Tottenham"],country:"Croatia",flag:"🇭🇷",position:"Midfielder",age:39,team:"Real Madrid",photo:"/images/players/modric.jpg"},
+{name:"Florian Wirtz",clubs:["Leverkusen"],country:"Germany",flag:"🇩🇪",position:"Midfielder",age:21,team:"Leverkusen"},
+{name:"Julián Álvarez",clubs:["Atlético","Man City"],country:"Argentina",flag:"🇦🇷",position:"Forward",age:24,team:"Atlético"},
+{name:"Rafael Leão",clubs:["AC Milan"],country:"Portugal",flag:"🇵🇹",position:"Forward",age:25,team:"AC Milan"},
+{name:"Khvicha Kvaratskhelia",clubs:["Napoli","PSG"],country:"Georgia",flag:"🇬🇪",position:"Forward",age:23,team:"Napoli"},
+{name:"Victor Osimhen",clubs:["Napoli"],country:"Nigeria",flag:"🇳🇬",position:"Forward",age:25,team:"Napoli"},
+{name:"Rodrygo",clubs:["Real Madrid"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:23,team:"Real Madrid"},
+{name:"Enzo Fernández",clubs:["Chelsea","Benfica"],country:"Argentina",flag:"🇦🇷",position:"Midfielder",age:23,team:"Chelsea"},
+{name:"Moisés Caicedo",clubs:["Chelsea","Brighton"],country:"Ecuador",flag:"🇪🇨",position:"Midfielder",age:22,team:"Chelsea"},
+{name:"Christopher Nkunku",clubs:["Chelsea","Leipzig"],country:"France",flag:"🇫🇷",position:"Forward",age:26,team:"Chelsea"},
+{name:"Darwin Núñez",clubs:["Liverpool","Benfica"],country:"Uruguay",flag:"🇺🇾",position:"Forward",age:25,team:"Liverpool"},
+{name:"Cody Gakpo",clubs:["Liverpool","PSV"],country:"Netherlands",flag:"🇳🇱",position:"Forward",age:25,team:"Liverpool"},
+{name:"Diogo Jota",clubs:["Liverpool","Wolves"],country:"Portugal",flag:"🇵🇹",position:"Forward",age:28,team:"Liverpool"},
+{name:"Son Heung-min",clubs:["Tottenham","Leverkusen"],country:"South Korea",flag:"🇰🇷",position:"Forward",age:31,team:"Tottenham"},
+{name:"Dominic Solanke",clubs:["Tottenham","Bournemouth"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:27,team:"Tottenham"},
+{name:"Dejan Kulusevski",clubs:["Tottenham","Juventus"],country:"Sweden",flag:"🇸🇪",position:"Midfielder",age:24,team:"Tottenham"},
+{name:"Ollie Watkins",clubs:["Aston Villa","Brentford"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:29,team:"Aston Villa"},
+{name:"Youri Tielemans",clubs:["Aston Villa","Leicester"],country:"Belgium",flag:"🇧🇪",position:"Midfielder",age:27,team:"Aston Villa"},
+{name:"Marcus Rashford",clubs:["Man United"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:27,team:"Man United"},
+{name:"Alejandro Garnacho",clubs:["Man United"],country:"Argentina",flag:"🇦🇷",position:"Forward",age:20,team:"Man United"},
+{name:"Rasmus Højlund",clubs:["Man United","Atalanta"],country:"Denmark",flag:"🇩🇰",position:"Forward",age:21,team:"Man United"},
+{name:"Amad Diallo",clubs:["Man United"],country:"Ivory Coast",flag:"🇨🇮",position:"Forward",age:22,team:"Man United"},
+{name:"Rúben Dias",clubs:["Man City","Benfica"],country:"Portugal",flag:"🇵🇹",position:"Defender",age:27,team:"Man City"},
+{name:"Nathan Aké",clubs:["Man City","Chelsea"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:29,team:"Man City"},
+{name:"Bernardo Silva",clubs:["Man City","Monaco"],country:"Portugal",flag:"🇵🇹",position:"Midfielder",age:29,team:"Man City"},
+{name:"Jack Grealish",clubs:["Man City","Aston Villa"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:29,team:"Man City"},
+{name:"Gabriel Magalhães",clubs:["Arsenal","Lille"],country:"Brazil",flag:"🇧🇷",position:"Defender",age:26,team:"Arsenal"},
+{name:"Gabriel Martinelli",clubs:["Arsenal"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:23,team:"Arsenal"},
+{name:"Kai Havertz",clubs:["Arsenal","Chelsea","Leverkusen"],country:"Germany",flag:"🇩🇪",position:"Forward",age:25,team:"Arsenal"},
+{name:"Mikel Merino",clubs:["Arsenal","Real Sociedad"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:28,team:"Arsenal"},
+{name:"Leroy Sané",clubs:["Bayern","Man City"],country:"Germany",flag:"🇩🇪",position:"Forward",age:28,team:"Bayern"},
+{name:"Thomas Müller",clubs:["Bayern"],country:"Germany",flag:"🇩🇪",position:"Forward",age:34,team:"Bayern"},
+{name:"Dayot Upamecano",clubs:["Bayern","Leipzig"],country:"France",flag:"🇫🇷",position:"Defender",age:25,team:"Bayern"},
+{name:"Alphonso Davies",clubs:["Bayern"],country:"Canada",flag:"🇨🇦",position:"Defender",age:24,team:"Bayern"},
+{name:"Michael Olise",clubs:["Bayern","Crystal Palace"],country:"France",flag:"🇫🇷",position:"Forward",age:22,team:"Bayern"},
+{name:"Bradley Barcola",clubs:["PSG","Lyon"],country:"France",flag:"🇫🇷",position:"Forward",age:22,team:"PSG"},
+{name:"Désiré Doué",clubs:["PSG","Rennes"],country:"France",flag:"🇫🇷",position:"Midfielder",age:19,team:"PSG"},
+{name:"Warren Zaïre-Emery",clubs:["PSG"],country:"France",flag:"🇫🇷",position:"Midfielder",age:18,team:"PSG"},
+{name:"Marquinhos",clubs:["PSG","Roma"],country:"Brazil",flag:"🇧🇷",position:"Defender",age:30,team:"PSG"},
+{name:"Gianluigi Donnarumma",clubs:["PSG","AC Milan"],country:"Italy",flag:"🇮🇹",position:"Goalkeeper",age:25,team:"PSG"},
+{name:"Mike Maignan",clubs:["AC Milan","Lille"],country:"France",flag:"🇫🇷",position:"Goalkeeper",age:28,team:"AC Milan"},
+{name:"Theo Hernández",clubs:["AC Milan","Real Madrid"],country:"France",flag:"🇫🇷",position:"Defender",age:27,team:"AC Milan"},
+{name:"Christian Pulisic",clubs:["AC Milan","Chelsea"],country:"USA",flag:"🇺🇸",position:"Forward",age:26,team:"AC Milan"},
+{name:"Álvaro Morata",clubs:["AC Milan","Atlético","Juventus"],country:"Spain",flag:"🇪🇸",position:"Forward",age:32,team:"AC Milan"},
+{name:"Hakan Çalhanoğlu",clubs:["Inter","AC Milan","Leverkusen"],country:"Turkey",flag:"🇹🇷",position:"Midfielder",age:30,team:"Inter"},
+{name:"Nicolò Barella",clubs:["Inter","Cagliari"],country:"Italy",flag:"🇮🇹",position:"Midfielder",age:27,team:"Inter"},
+{name:"Federico Dimarco",clubs:["Inter"],country:"Italy",flag:"🇮🇹",position:"Defender",age:26,team:"Inter"},
+{name:"Marcus Thuram",clubs:["Inter","Mönchengladbach"],country:"France",flag:"🇫🇷",position:"Forward",age:27,team:"Inter"},
+{name:"Denzel Dumfries",clubs:["Inter","PSV"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:28,team:"Inter"},
+{name:"Yann Sommer",clubs:["Inter","Bayern","Mönchengladbach"],country:"Switzerland",flag:"🇨🇭",position:"Goalkeeper",age:35,team:"Inter"},
+{name:"Teun Koopmeiners",clubs:["Juventus","Atalanta"],country:"Netherlands",flag:"🇳🇱",position:"Midfielder",age:26,team:"Juventus"},
+{name:"Dušan Vlahović",clubs:["Juventus","Fiorentina"],country:"Serbia",flag:"🇷🇸",position:"Forward",age:24,team:"Juventus"},
+{name:"Weston McKennie",clubs:["Juventus","Schalke"],country:"USA",flag:"🇺🇸",position:"Midfielder",age:26,team:"Juventus"},
+{name:"Manuel Locatelli",clubs:["Juventus","Sassuolo","AC Milan"],country:"Italy",flag:"🇮🇹",position:"Midfielder",age:26,team:"Juventus"},
+{name:"Bremer",clubs:["Juventus","Torino"],country:"Brazil",flag:"🇧🇷",position:"Defender",age:27,team:"Juventus"},
+{name:"Randal Kolo Muani",clubs:["Juventus","PSG","Frankfurt"],country:"France",flag:"🇫🇷",position:"Forward",age:25,team:"Juventus"},
+{name:"Granit Xhaka",clubs:["Leverkusen","Arsenal","Basel"],country:"Switzerland",flag:"🇨🇭",position:"Midfielder",age:32,team:"Leverkusen"},
+{name:"Jonathan Tah",clubs:["Leverkusen"],country:"Germany",flag:"🇩🇪",position:"Defender",age:28,team:"Leverkusen"},
+{name:"Piero Hincapié",clubs:["Leverkusen"],country:"Ecuador",flag:"🇪🇨",position:"Defender",age:22,team:"Leverkusen"},
+{name:"Jeremie Frimpong",clubs:["Leverkusen","Celtic"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:23,team:"Leverkusen"},
+{name:"Alejandro Grimaldo",clubs:["Leverkusen","Benfica"],country:"Spain",flag:"🇪🇸",position:"Defender",age:28,team:"Leverkusen"},
+{name:"Mikel Oyarzabal",clubs:["Real Sociedad"],country:"Spain",flag:"🇪🇸",position:"Forward",age:27,team:"Real Sociedad"},
+{name:"Martín Zubimendi",clubs:["Real Sociedad"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:25,team:"Real Sociedad"},
+{name:"Takefusa Kubo",clubs:["Real Sociedad","Real Madrid"],country:"Japan",flag:"🇯🇵",position:"Forward",age:22,team:"Real Sociedad"},
+{name:"Nico Williams",clubs:["Athletic Bilbao"],country:"Spain",flag:"🇪🇸",position:"Forward",age:22,team:"Athletic Bilbao"},
+{name:"Iñaki Williams",clubs:["Athletic Bilbao"],country:"Ghana",flag:"🇬🇭",position:"Forward",age:30,team:"Athletic Bilbao"},
+{name:"Jan Oblak",clubs:["Atlético","Benfica"],country:"Slovenia",flag:"🇸🇮",position:"Goalkeeper",age:31,team:"Atlético"},
+{name:"Robin Le Normand",clubs:["Atlético","Real Sociedad"],country:"Spain",flag:"🇪🇸",position:"Defender",age:27,team:"Atlético"},
+{name:"Eduardo Camavinga",clubs:["Real Madrid","Rennes"],country:"France",flag:"🇫🇷",position:"Midfielder",age:21,team:"Real Madrid"},
+{name:"Dani Carvajal",clubs:["Real Madrid","Leverkusen"],country:"Spain",flag:"🇪🇸",position:"Defender",age:32,team:"Real Madrid"},
+{name:"Lucas Vázquez",clubs:["Real Madrid"],country:"Spain",flag:"🇪🇸",position:"Defender",age:32,team:"Real Madrid"},
+{name:"Ferland Mendy",clubs:["Real Madrid","Lyon"],country:"France",flag:"🇫🇷",position:"Defender",age:29,team:"Real Madrid"},
+{name:"Marc-André ter Stegen",clubs:["Barcelona","Mönchengladbach"],country:"Germany",flag:"🇩🇪",position:"Goalkeeper",age:32,team:"Barcelona"},
+{name:"Iñigo Martínez",clubs:["Barcelona","Athletic Bilbao","Real Sociedad"],country:"Spain",flag:"🇪🇸",position:"Defender",age:33,team:"Barcelona"},
+{name:"Jules Koundé",clubs:["Barcelona","Sevilla","Bordeaux"],country:"France",flag:"🇫🇷",position:"Defender",age:25,team:"Barcelona"},
+{name:"Ferran Torres",clubs:["Barcelona","Man City","Valencia"],country:"Spain",flag:"🇪🇸",position:"Forward",age:24,team:"Barcelona"},
+{name:"Fermín López",clubs:["Barcelona"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:21,team:"Barcelona"},
+{name:"Ederson",clubs:["Man City","Benfica"],country:"Brazil",flag:"🇧🇷",position:"Goalkeeper",age:30,team:"Man City"},
+{name:"Kyle Walker",clubs:["Man City","Tottenham","Sheffield United"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:34,team:"Man City"},
+{name:"John Stones",clubs:["Man City","Everton","Barnsley"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:30,team:"Man City"},
+{name:"Mateo Kovačić",clubs:["Man City","Chelsea","Real Madrid","Inter"],country:"Croatia",flag:"🇭🇷",position:"Midfielder",age:29,team:"Man City"},
+{name:"David Raya",clubs:["Arsenal","Brentford"],country:"Spain",flag:"🇪🇸",position:"Goalkeeper",age:29,team:"Arsenal"},
+{name:"Ben White",clubs:["Arsenal","Brighton","Leeds"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:27,team:"Arsenal"},
+{name:"Jurrien Timber",clubs:["Arsenal","Ajax"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:23,team:"Arsenal"},
+{name:"Thomas Partey",clubs:["Arsenal","Atlético"],country:"Ghana",flag:"🇬🇭",position:"Midfielder",age:31,team:"Arsenal"},
+{name:"Alisson Becker",clubs:["Liverpool","Roma"],country:"Brazil",flag:"🇧🇷",position:"Goalkeeper",age:31,team:"Liverpool"},
+{name:"Andy Robertson",clubs:["Liverpool","Hull","Dundee United"],country:"Scotland",flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",position:"Defender",age:30,team:"Liverpool"},
+{name:"Ibrahima Konaté",clubs:["Liverpool","Leipzig","Sochaux"],country:"France",flag:"🇫🇷",position:"Defender",age:25,team:"Liverpool"},
+{name:"Joe Gomez",clubs:["Liverpool","Charlton"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:27,team:"Liverpool"},
+{name:"Harvey Elliott",clubs:["Liverpool","Blackburn","Fulham"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:21,team:"Liverpool"},
+{name:"Reece James",clubs:["Chelsea","Wigan"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Defender",age:25,team:"Chelsea"},
+{name:"Levi Colwill",clubs:["Chelsea","Brighton","Huddersfield"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧꣟",position:"Defender",age:21,team:"Chelsea"},
+{name:"Nicolas Jackson",clubs:["Chelsea","Villarreal","Belenenses"],country:"Senegal",flag:"🇸🇳",position:"Forward",age:23,team:"Chelsea"},
+{name:"André Onana",clubs:["Man United","Inter","Ajax","Barcelona"],country:"Cameroon",flag:"🇨🇲",position:"Goalkeeper",age:28,team:"Man United"},
+{name:"Matthijs de Ligt",clubs:["Man United","Bayern","Juventus","Ajax"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:25,team:"Man United"},
+{name:"Noussair Mazraoui",clubs:["Man United","Bayern","Ajax"],country:"Morocco",flag:"🇲🇦",position:"Defender",age:26,team:"Man United"},
+{name:"Pau Torres",clubs:["Aston Villa","Villarreal"],country:"Spain",flag:"🇪🇸",position:"Defender",age:27,team:"Aston Villa"},
+{name:"Emiliano Martínez",clubs:["Aston Villa","Arsenal","Getafe","Sheffield Wed","Rotherham","Wolverhampton","Wigan","Leeds","Reading"],country:"Argentina",flag:"🇦🇷",position:"Goalkeeper",age:32,team:"Aston Villa"},
+{name:"John McGinn",clubs:["Aston Villa","Hibernian","St Mirren"],country:"Scotland",flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",position:"Midfielder",age:29,team:"Aston Villa"},
+{name:"Leon Bailey",clubs:["Aston Villa","Leverkusen","Genk"],country:"Jamaica",flag:"🇯🇲",position:"Forward",age:27,team:"Aston Villa"},
+{name:"Micky van de Ven",clubs:["Tottenham","Wolfsburg","Volendam"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:23,team:"Tottenham"},
+{name:"Pedro Porro",clubs:["Tottenham","Sporting CP","Man City","Valladolid"],country:"Spain",flag:"🇪🇸",position:"Defender",age:25,team:"Tottenham"},
+{name:"Bruno Guimarães",clubs:["Newcastle","Lyon","Athletico Paranaense"],country:"Brazil",flag:"🇧🇷",position:"Midfielder",age:26,team:"Newcastle"},
+{name:"Alexander Isak",clubs:["Newcastle","Real Sociedad","Borussia Dortmund"],country:"Sweden",flag:"🇸🇪",position:"Forward",age:25,team:"Newcastle"},
+{name:"Anthony Gordon",clubs:["Newcastle","Everton"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Forward",age:23,team:"Newcastle"},
+{name:"Sven Botman",clubs:["Newcastle","Lille","Ajax"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:24,team:"Newcastle"},
+{name:"Alessandro Bastoni",clubs:["Inter","Atalanta","Parma"],country:"Italy",flag:"🇮🇹",position:"Defender",age:25,team:"Inter"},
+{name:"Stefan de Vrij",clubs:["Inter","Lazio","Feyenoord"],country:"Netherlands",flag:"🇳🇱",position:"Defender",age:32,team:"Inter"},
+{name:"Olivier Giroud",clubs:["AC Milan","Chelsea","Arsenal","Montpellier"],country:"France",flag:"🇫🇷",position:"Forward",age:38,team:"AC Milan"},
+{name:"Ruben Loftus-Cheek",clubs:["AC Milan","Chelsea","Crystal Palace","Fulham"],country:"England",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",position:"Midfielder",age:28,team:"AC Milan"},
+{name:"Manuel Neuer",clubs:["Bayern","Schalke"],country:"Germany",flag:"🇩🇪",position:"Goalkeeper",age:38,team:"Bayern"},
+{name:"Serge Gnabry",clubs:["Bayern","Arsenal","Werder Bremen","Hoffenheim"],country:"Germany",flag:"🇩🇪",position:"Forward",age:29,team:"Bayern"},
+{name:"Niklas Süle",clubs:["Dortmund","Bayern","Hoffenheim"],country:"Germany",flag:"🇩🇪",position:"Defender",age:29,team:"Dortmund"},
+{name:"Julian Brandt",clubs:["Dortmund","Leverkusen","Wolfsburg"],country:"Germany",flag:"🇩🇪",position:"Midfielder",age:28,team:"Dortmund"},
+{name:"Gregor Kobel",clubs:["Dortmund","Augsburg","Stuttgart","Zürich"],country:"Switzerland",flag:"🇨🇭",position:"Goalkeeper",age:26,team:"Dortmund"},
+{name:"Emre Can",clubs:["Dortmund","Juventus","Liverpool","Bayern"],country:"Germany",flag:"🇩🇪",position:"Midfielder",age:30,team:"Dortmund"},
+{name:"Kylian Mbappé",clubs:["Real Madrid","PSG","Monaco"],country:"France",flag:"🇫🇷",position:"Forward",age:25,team:"Real Madrid"},
+{name:"Endrick",clubs:["Real Madrid","Palmeiras"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:18,team:"Real Madrid"},
+{name:"Savinho",clubs:["Man City","Girona","PSG"],country:"Brazil",flag:"🇧🇷",position:"Forward",age:20,team:"Man City"},
+{name:"Saúl Ñíguez",clubs:["Atlético","Chelsea","Sevilla"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:29,team:"Atlético"},
+{name:"Koke",clubs:["Atlético"],country:"Spain",flag:"🇪🇸",position:"Midfielder",age:32,team:"Atlético"},
+{name:"Giovanni Di Lorenzo",clubs:["Napoli","Empoli","Matera"],country:"Italy",flag:"🇮🇹",position:"Defender",age:31,team:"Napoli"},
+{name:"Gleison Bremer",clubs:["Juventus","Torino"],country:"Brazil",flag:"🇧🇷",position:"Defender",age:27,team:"Juventus"},
+{name:"Arkadiusz Milik",clubs:["Juventus","Napoli","Marseille","Ajax"],country:"Poland",flag:"🇵🇱",position:"Forward",age:30,team:"Juventus"},
+{name:"Robert Lewandowski",clubs:["Barcelona","Bayern","Dortmund","Lech Poznań"],country:"Poland",flag:"🇵🇱",position:"Forward",age:36,team:"Barcelona"},
+{name:"Wojciech Szczęsny",clubs:["Barcelona","Juventus","Arsenal","Roma"],country:"Poland",flag:"🇵🇱",position:"Goalkeeper",age:34,team:"Barcelona"},
+{name:"Frenkie de Jong",clubs:["Barcelona","Ajax"],country:"Netherlands",flag:"🇳🇱",position:"Midfielder",age:27,team:"Barcelona"},
+{name:"Ansu Fati",clubs:["Barcelona"],country:"Spain",flag:"🇪🇸",position:"Forward",age:22,team:"Barcelona"},
+{name:"Brahim Díaz",clubs:["Real Madrid","AC Milan","Man City","Málaga"],country:"Spain",flag:"🇪🇸",position:"Forward",age:25,team:"Real Madrid"},
+{name:"Lucas Hernández",clubs:["PSG","Bayern","Atlético"],country:"France",flag:"🇫🇷",position:"Defender",age:28,team:"PSG"},
+{name:"Presnel Kimpembe",clubs:["PSG"],country:"France",flag:"🇫🇷",position:"Defender",age:28,team:"PSG"},
+{name:"Achraf Hakimi",clubs:["PSG","Inter","Dortmund","Real Madrid"],country:"Morocco",flag:"🇲🇦",position:"Defender",age:25,team:"PSG"},
+{name:"Hakim Ziyech",clubs:["Galatasaray","Chelsea","Ajax","Almeria"],country:"Morocco",flag:"🇲🇦",position:"Midfielder",age:31,team:"Galatasaray"},
+{name:"Sofyan Amrabat",clubs:["Fiorentina","Man United","Hellas Verona"],country:"Morocco",flag:"🇲🇦",position:"Midfielder",age:27,team:"Fiorentina"},
+{name:"Yassine Bounou",clubs:["Galatasaray","Sevilla","Girona","Real Zaragoza"],country:"Morocco",flag:"🇲🇦",position:"Goalkeeper",age:32,team:"Galatasaray"},
+{name:"Amine Adli",clubs:["Leverkusen","Toulouse"],country:"Morocco",flag:"🇲🇦",position:"Forward",age:24,team:"Leverkusen"},
+{name:"Hwang Hee-chan",clubs:["Wolves","Leipzig","Hamburg","Salzburg"],country:"South Korea",flag:"🇰🇷",position:"Forward",age:28,team:"Wolves"},
+{name:"Cho Gue-sung",clubs:["Brentford","Jeonbuk"],country:"South Korea",flag:"🇰🇷",position:"Forward",age:26,team:"Brentford"},
+{name:"Hiroki Ito",clubs:["Bayern","Stuttgart"],country:"Japan",flag:"🇯🇵",position:"Defender",age:25,team:"Bayern"},
+{name:"Ritsu Doan",clubs:["Freiburg","PSV","Groningen"],country:"Japan",flag:"🇯🇵",position:"Forward",age:26,team:"Freiburg"},
+{name:"Kaoru Mitoma",clubs:["Brighton","Union Sint-Gilloise","Kawasaki"],country:"Japan",flag:"🇯🇵",position:"Forward",age:27,team:"Brighton"},
+{name:"Ibrahim Sangaré",clubs:["Nottm Forest","PSV","Toulouse"],country:"Ivory Coast",flag:"🇨🇮",position:"Midfielder",age:26,team:"Nottm Forest"},
+{name:"Simon Adingra",clubs:["Brighton","Nordsjaelland"],country:"Ivory Coast",flag:"🇨🇮",position:"Forward",age:22,team:"Brighton"},
+{name:"Evan Ferguson",clubs:["Brighton","Bohemian"],country:"Ireland",flag:"🇮🇪",position:"Forward",age:20,team:"Brighton"},
+{name:"Mats Hummels",clubs:["Roma","Dortmund","Bayern"],country:"Germany",flag:"🇩🇪",position:"Defender",age:35,team:"Roma"},
+{name:"Paulo Dybala",clubs:["Roma","Juventus","Palermo"],country:"Argentina",flag:"🇦🇷",position:"Forward",age:31,team:"Roma"}
+];
+const clubs=["Real Madrid","Barcelona","Man United","Liverpool","Chelsea","Arsenal","Man City","Bayern","PSG","Juventus","AC Milan","Inter","Atlético","Tottenham"];
+const clubLogos={"Real Madrid":"/images/clubs/real-madrid.png","Barcelona":"/images/clubs/barcelona.png","Man United":"/images/clubs/man-united.png","Liverpool":"/images/clubs/liverpool.png","Chelsea":"/images/clubs/chelsea.png","Arsenal":"/images/clubs/arsenal.png","Man City":"/images/clubs/man-city.png","Bayern":"/images/clubs/bayern.png","PSG":"/images/clubs/psg.png","Juventus":"/images/clubs/juventus.png","AC Milan":"/images/clubs/ac-milan.png","Inter":"/images/clubs/inter.png","Atlético":"/images/clubs/atletico.png","Tottenham":"/images/clubs/tottenham.png"};
+function clubImg(name,size=24){return clubLogos[name]?`<img src="${clubLogos[name]}" width="${size}" height="${size}" style="width:${size}px;height:${size}px;object-fit:contain;vertical-align:middle">`:name}
+let stats=JSON.parse(localStorage.getItem('f11'))||{g:0,w:0,s:0};const lb=[{n:"CR7_Fan",s:2450},{n:"MessiGOAT",s:2380},{n:"FootballKing",s:2250},{n:"ZizouMagic",s:2100},{n:"R9Legend",s:1980},{n:"HaalandBeast",s:1850},{n:"TikiTaka",s:1720},{n:"PremierPro",s:1650}];
+function save(){localStorage.setItem('f11',JSON.stringify(stats))}
+function getToday(){return new Date().toISOString().split('T')[0]}
+function isPlayedToday(game){const played=JSON.parse(localStorage.getItem('played')||'{}');return played[game]===getToday()}
+function markPlayed(game){const played=JSON.parse(localStorage.getItem('played')||'{}');played[game]=getToday();localStorage.setItem('played',JSON.stringify(played))}
+function checkPlayable(game){if(isPlayedToday(game)){alert('You already played this game today! Come back tomorrow 🌅');return false}return true}
+function getDailyScore(){const d=JSON.parse(localStorage.getItem('dailyScore')||'{}');if(d.date!==getToday())return{date:getToday(),w:0,l:0};return d}
+function addDailyScore(win){const d=getDailyScore();if(win)d.w++;else d.l++;localStorage.setItem('dailyScore',JSON.stringify(d));updateDailyScore()}
+function updateDailyScore(){const d=getDailyScore();document.getElementById('daily-score-wins').textContent=`🟢 ${d.w}`;document.getElementById('daily-score-losses').textContent=`🔴 ${d.l}`}
+function updateProf(){document.getElementById('s-g').textContent=stats.g;document.getElementById('s-w').textContent=stats.w;document.getElementById('s-s').textContent=stats.s;renderProfUI();const my=stats.w*100+stats.s*50;let all=[...lb,{n:'YOU',s:my,me:1}].sort((a,b)=>b.s-a.s);document.getElementById('lb-list').innerHTML=all.slice(0,8).map((p,i)=>`<div class="lb-item ${p.me?'me':''}"><div class="lb-rank ${i<1?'g':i<2?'s':i<3?'b':'n'}">${i+1}</div><div class="lb-name">${p.n}</div><div class="lb-score">${p.s}</div></div>`).join('')}
+function updateGameCards(){const games=['legacy','grid','wordle','goltexto','pyramid','impostor'];games.forEach(g=>{const card=document.querySelector(`[onclick="showPage('${g}')"]`);if(card&&isPlayedToday(g)){card.style.opacity='0.5';card.style.pointerEvents='none';const playBtn=card.querySelector('.play-btn');if(playBtn)playBtn.textContent='PLAYED ✓'}})}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');if(id==='profile')updateProf();if(id==='home')updateGameCards();window.scrollTo(0,0)}
+function setupAC(inId,listId,data,onSel,filter){const inp=document.getElementById(inId),list=document.getElementById(listId);inp.oninput=()=>{const q=inp.value.toLowerCase().trim();if(q.length<2){list.classList.remove('show');return}let f=data.filter(p=>p.name.toLowerCase().includes(q));if(filter)f=f.filter(filter);f=f.slice(0,5);if(!f.length){list.classList.remove('show');return}list.innerHTML=f.map(p=>`<div class="ac-item" data-n="${p.name}">${p.photo?`<img src="${p.photo}" loading="lazy" width="32" height="32" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:top">`:`<span style="font-size:1.1rem">${p.flag}</span>`}<div><div style="font-weight:500">${p.name}</div><div style="font-size:.7rem;color:var(--text3)">${p.team||''}</div></div></div>`).join('');list.classList.add('show');list.querySelectorAll('.ac-item').forEach(item=>{item.onclick=()=>{onSel(data.find(p=>p.name===item.dataset.n));inp.value='';list.classList.remove('show')}})};inp.onblur=()=>setTimeout(()=>list.classList.remove('show'),200)}
+let lastG='',lastS='';function showModal(t,g,s,l,m){lastG=g;lastS=s;document.getElementById('m-t').textContent=t;document.getElementById('sh-g').textContent=g;document.getElementById('sh-s').textContent=s;document.getElementById('sh-l').textContent=l;document.getElementById('m-m').textContent=m;document.getElementById('modal-o').classList.add('show')}
+function closeModal(){document.getElementById('modal-o').classList.remove('show')}
+function shareIG(){const c=document.createElement('canvas');c.width=400;c.height=500;const x=c.getContext('2d');const gr=x.createLinearGradient(0,0,400,500);gr.addColorStop(0,'#0a0f1a');gr.addColorStop(1,'#1a2332');x.fillStyle=gr;x.fillRect(0,0,400,500);x.strokeStyle='#10b981';x.lineWidth=4;x.beginPath();x.roundRect(10,10,380,480,16);x.stroke();x.fillStyle='#10b981';x.font='20px Outfit';x.textAlign='center';x.fillText(lastG,200,80);x.fillStyle='#f1f5f9';x.font='30px Bebas Neue';x.fillText('MY RESULT',200,140);x.fillStyle='#10b981';x.font='bold 100px Bebas Neue';x.fillText(lastS,200,280);x.fillStyle='#64748b';x.font='18px Outfit';x.fillText('⚽ footio.com',200,450);const a=document.createElement('a');a.download='footio.png';a.href=c.toDataURL();a.click();alert('Image downloaded! Add to Instagram Stories.')}
+// Legacy
+let legG={c:[],f:{},sl:0};function startLeg(){if(!checkPlayable('legacy'))return;document.getElementById('leg-i').style.display='none';document.getElementById('leg-g').style.display='block';initLeg()}function resetLeg(){if(isPlayedToday('legacy')){alert('You already played this game today! Come back tomorrow 🌅');showPage('home');return}initLeg()}
+function initLeg(){const all=[...new Set(legends.map(p=>p.country))].sort(()=>Math.random()-.5).slice(0,11);legG={c:all,f:{},sl:0};renderLeg();setupAC('leg-in','leg-ac',legends,selLeg,p=>legG.c.includes(p.country)&&!Object.values(legG.f).some(x=>x.name===p.name))}
+function renderLeg(){const rows=[[0],[1,2,3,4],[5,6,7],[8,9,10]];document.getElementById('leg-f').innerHTML=rows.map(r=>`<div class="leg-row">${r.map(i=>{const c=legG.c[i],p=legG.f[i],fl=legends.find(x=>x.country===c)?.flag||'🏳️';return`<div class="leg-slot ${p?'filled':''} ${legG.sl===i?'active':''}" onclick="selLegSl(${i})">${p&&p.photo?`<img src="${p.photo}" loading="lazy" width="40" height="40" style="width:68px;height:68px;border-radius:50%;object-fit:cover;object-position:top;margin-bottom:3px">`:`<span class="fl">${fl}</span>`}<span class="cn">${c}</span>${p?`<span class="pn">${p.name.split(' ').pop()}</span>`:''}</div>`}).join('')}</div>`).join('');document.getElementById('leg-sc').textContent=`${Object.keys(legG.f).length}/11`}
+function selLegSl(i){if(!legG.f[i]){legG.sl=i;renderLeg();document.getElementById('leg-in').focus()}}
+function selLeg(p){const idx=legG.c.findIndex((c,i)=>c===p.country&&!legG.f[i]);if(idx===-1)return;legG.f[idx]=p;legG.sl=legG.c.findIndex((c,i)=>!legG.f[i]);renderLeg();if(Object.keys(legG.f).length===11){markPlayed('legacy');stats.g++;stats.w++;stats.s++;save();addDailyScore(true);showModal('🎉 You Won!','LEGACY 11','11/11','Legends','')}}
+// Grid
+let gridG={r:[],cl:[],ce:Array(9).fill(null),gu:9,ac:null};function startGrid(){if(!checkPlayable('grid'))return;document.getElementById('grid-i').style.display='none';document.getElementById('grid-g').style.display='block';initGrid()}function resetGrid(){if(isPlayedToday('grid')){alert('You already played this game today! Come back tomorrow 🌅');showPage('home');return}initGrid()}
+function initGrid(){const sh=[...clubs].sort(()=>Math.random()-.5);gridG={r:sh.slice(0,3),cl:sh.slice(3,6),ce:Array(9).fill(null),gu:9,ac:0};renderGrid();document.getElementById('grid-iw').style.display='block';setupAC('grid-in','grid-ac',players,selGrid,p=>!gridG.ce.some(c=>c&&c.name===p.name))}
+function renderGrid(){document.getElementById('grid-sc').textContent=gridG.gu;let h='<div class="grid-h corner"></div>';gridG.cl.forEach(c=>h+=`<div class="grid-h">${clubImg(c,48)}<div style="font-size:.85rem;margin-top:4px">${c}</div></div>`);for(let r=0;r<3;r++){h+=`<div class="grid-h">${clubImg(gridG.r[r],48)}<div style="font-size:.85rem;margin-top:4px">${gridG.r[r]}</div></div>`;for(let c=0;c<3;c++){const i=r*3+c,ce=gridG.ce[i];h+=`<div class="grid-c ${ce?'filled':''}" onclick="selGridC(${i})">${ce?ce.name.split(' ').pop():''}</div>`}}document.getElementById('grid-b').innerHTML=h}
+function selGridC(i){if(gridG.ce[i]||gridG.gu<=0)return;gridG.ac=i;document.getElementById('grid-in').focus()}
+function selGrid(p){if(gridG.ac===null&&gridG.ac!==0)return;const r=Math.floor(gridG.ac/3),c=gridG.ac%3;if(p.clubs&&p.clubs.includes(gridG.r[r])&&p.clubs.includes(gridG.cl[c]))gridG.ce[gridG.ac]=p;gridG.gu--;gridG.ac=null;renderGrid();const filled=gridG.ce.filter(c=>c).length;if(filled===9){markPlayed('grid');stats.g++;stats.w++;stats.s++;save();addDailyScore(true);showModal('🎉 You Won!','GRID','9/9','Perfect!','')}else if(gridG.gu<=0){markPlayed('grid');stats.g++;stats.s=0;save();addDailyScore(false);showModal('😢 Game Over','GRID',`${filled}/9`,'Cells','')}}
+// Wordle
+let wordG={t:null,g:[],m:8};function startWord(){if(!checkPlayable('wordle'))return;document.getElementById('word-i').style.display='none';document.getElementById('word-g').style.display='block';initWord()}function resetWord(){if(isPlayedToday('wordle')){alert('You already played this game today! Come back tomorrow 🌅');showPage('home');return}initWord()}
+function initWord(){wordG={t:players[Math.floor(Math.random()*players.length)],g:[],m:8};renderWord();document.getElementById('word-at').textContent=wordG.m;setupAC('word-in','word-ac',players,guessWord,p=>!wordG.g.some(x=>x.name===p.name))}
+function renderWord(){const cats=[{i:'🏳️',l:'Nation'},{i:'🏟️',l:'Club'},{i:'📍',l:'Position'},{i:'🏆',l:'Common club'},{i:'📅',l:'Age'},{i:'👤',l:'Name'}];let h=`<div class="word-r">${cats.map(c=>`<div class="word-c"><span class="lbl">${c.i}</span><span style="font-size:.6rem;color:var(--text3);line-height:1">${c.l}</span></div>`).join('')}</div>`;for(let i=0;i<wordG.m;i++){const g=wordG.g[i];h+='<div class="word-r">';if(g){const t=wordG.t;h+=`<div class="word-c sm ${g.country===t.country?'correct':'wrong'}"><span class="val">${g.flag}</span></div>`;h+=`<div class="word-c sm ${g.team===t.team?'correct':'wrong'}"><span class="val">${(g.team||'').slice(0,6)}</span></div>`;h+=`<div class="word-c sm ${g.position===t.position?'correct':'wrong'}"><span class="val">${(g.position||'').slice(0,4)}</span></div>`;h+=`<div class="word-c sm ${g.clubs?.some(c=>t.clubs?.includes(c))?'partial':'wrong'}"><span class="val">Club</span></div>`;const ad=g.age-t.age,ac=ad===0?'correct':Math.abs(ad)<=2?'partial':'wrong',as=ad===0?'✓':ad>0?'↓':'↑';h+=`<div class="word-c sm ${ac}"><span class="val">${g.age}${as}</span></div>`;h+=`<div class="word-c sm ${g.name===t.name?'correct':'wrong'}"><span class="val">${g.name.split(' ').pop().slice(0,6)}</span></div>`}else{for(let j=0;j<6;j++)h+='<div class="word-c sm"></div>'}h+='</div>'}document.getElementById('word-b').innerHTML=h}
+function guessWord(p){wordG.g.push(p);document.getElementById('word-at').textContent=wordG.m-wordG.g.length;renderWord();if(p.name===wordG.t.name){markPlayed('wordle');stats.g++;stats.w++;stats.s++;save();addDailyScore(true);showModal('🎉 You Won!','WORDLE',`${wordG.g.length}/${wordG.m}`,'Attempts',p.name)}else if(wordG.g.length>=wordG.m){markPlayed('wordle');stats.g++;stats.s=0;save();addDailyScore(false);showModal('😢 Game Over','WORDLE',wordG.t.name,'Answer:','')}}
+// Goltexto
+let goltG={t:null,g:[],b:0};function startGolt(){if(!checkPlayable('goltexto'))return;document.getElementById('golt-i').style.display='none';document.getElementById('golt-g').style.display='block';initGolt()}function resetGolt(){if(isPlayedToday('goltexto')){alert('You already played this game today! Come back tomorrow 🌅');showPage('home');return}initGolt()}
+function initGolt(){goltG={t:players[Math.floor(Math.random()*players.length)],g:[],b:0};renderGolt();setupAC('golt-in','golt-ac',players,guessGolt,p=>!goltG.g.some(x=>x.p.name===p.name))}
+function calcGolt(p,t){let s=0;if(p.country===t.country)s+=200;if(p.team===t.team)s+=300;if(p.position===t.position)s+=150;if(p.clubs?.some(c=>t.clubs?.includes(c)))s+=150;s+=Math.max(0,200-Math.abs(p.age-t.age)*20);return Math.min(1000,s)}
+function renderGolt(){const el=document.getElementById('golt-s');el.textContent=goltG.b;el.className='golt-sc '+(goltG.b>=800?'hot':goltG.b>=400?'warm':'cold');document.getElementById('golt-f').style.width=(goltG.b/10)+'%';document.getElementById('golt-gu').innerHTML=goltG.g.map(x=>`<div class="golt-guess"><span>${x.p.name}</span><span style="color:${x.s>=800?'var(--red)':x.s>=400?'var(--gold)':'var(--blue)'}">${x.s}</span></div>`).join('')}
+function guessGolt(p){const s=calcGolt(p,goltG.t);goltG.g.unshift({p,s});if(s>goltG.b)goltG.b=s;renderGolt();if(s===1000){markPlayed('goltexto');stats.g++;stats.w++;stats.s++;save();addDailyScore(true);showModal('🎉 You Won!','GOLTEXTO',`${goltG.g.length}`,'Guesses',p.name)}}
+// Pyramid
+const pyrC=[
+{n:"Most Goals",k:"goals",d:"legends"},
+{n:"Most Trophies",k:"trophies",d:"legends"},
+{n:"Highest Rating",k:"rating",d:"legends"},
+{n:"Serie A Legends",k:"goals",d:"legends",f:p=>['Juventus','AC Milan','Inter'].some(t=>p.team===t)},
+{n:"Premier League Legends",k:"rating",d:"legends",f:p=>['Man United','Liverpool','Arsenal','Chelsea','Man City'].some(t=>p.team===t)},
+{n:"La Liga Legends",k:"rating",d:"legends",f:p=>['Real Madrid','Barcelona','Atlético'].some(t=>p.team===t)},
+{n:"Oldest Active Stars",k:"age",d:"players"},
+{n:"Youngest Stars",k:"age",d:"players",rev:true},
+{n:"Premier League Stars",k:"age",d:"players",f:p=>['Man United','Liverpool','Arsenal','Chelsea','Man City','Tottenham','Aston Villa'].some(t=>p.team===t)},
+{n:"Bundesliga Stars",k:"age",d:"players",f:p=>['Bayern','Leverkusen','Dortmund'].some(t=>p.team===t)},
+{n:"Serie A Stars",k:"age",d:"players",f:p=>['Juventus','AC Milan','Inter','Napoli'].some(t=>p.team===t)},
+{n:"La Liga Stars",k:"age",d:"players",f:p=>['Real Madrid','Barcelona','Atlético','Real Sociedad','Athletic Bilbao'].some(t=>p.team===t)},
+{n:"Top Forwards",k:"age",d:"players",f:p=>p.position==='Forward'},
+{n:"Top Midfielders",k:"age",d:"players",f:p=>p.position==='Midfielder'}
+];let pyrG={c:null,p:[],pl:Array(10).fill(null),cu:0};
+function startPyr(){if(!checkPlayable('pyramid'))return;document.getElementById('pyr-i').style.display='none';document.getElementById('pyr-g').style.display='block';initPyr()}function resetPyr(){if(isPlayedToday('pyramid')){alert('You already played this game today! Come back tomorrow 🌅');showPage('home');return}initPyr()}
+function initPyr(){let c,filtered,attempts=0;do{c=pyrC[Math.floor(Math.random()*pyrC.length)];const dataSource=c.d==='players'?players:legends;filtered=c.f?dataSource.filter(c.f):dataSource;attempts++}while(filtered.length<10&&attempts<20);const dataSource=c.d==='players'?players:legends;filtered=c.f?dataSource.filter(c.f):dataSource;const sorted=[...filtered].sort((a,b)=>c.rev?a[c.k]-b[c.k]:b[c.k]-a[c.k]).slice(0,10);const getRow=pos=>{if(pos===0)return 0;if(pos<=2)return 1;if(pos<=5)return 2;return 3};let randomOrder=sorted.map((p,i)=>({p,correctPos:i,row:getRow(i)}));let lastRow=-1;for(let i=randomOrder.length-1;i>0;i--){let swapIdx;let attempts=0;do{swapIdx=Math.floor(Math.random()*(i+1));attempts++}while(attempts<50&&swapIdx>0&&randomOrder[swapIdx].row===lastRow);[randomOrder[i],randomOrder[swapIdx]]=[randomOrder[swapIdx],randomOrder[i]];lastRow=randomOrder[i].row}pyrG={c,p:randomOrder.map(x=>x.p),correctPositions:randomOrder.map(x=>x.correctPos),pl:Array(10).fill(null),cu:0,sorted};renderPyr()}
+function renderPyr(){document.getElementById('pyr-c').textContent=`📊 ${pyrG.c.n.toUpperCase()}`;const p=pyrG.p[pyrG.cu];const correctPos=pyrG.correctPositions[pyrG.cu];document.getElementById('pyr-p').innerHTML=p?`${p.photo?`<img src="${p.photo}" loading="lazy" width="50" height="50" style="width:50px;height:50px;border-radius:50%;object-fit:cover;object-position:top;margin:0 auto 8px;display:block">`:`<span style="font-size:1.5rem">${p.flag}</span>`}<span class="pyr-name">${p.name}</span><div class="pyr-team">${p.team}</div>`:'<span style="color:var(--green)">All placed! Submit</span>';const getRow=pos=>{if(pos===0)return 0;if(pos<=2)return 1;if(pos<=5)return 2;return 3};const correctRow=p?getRow(correctPos):-1;const rows=[[0],[1,2],[3,4,5],[6,7,8,9]];document.getElementById('pyr-b').innerHTML=rows.map((r,rowIdx)=>`<div class="pyr-row ${p&&rowIdx===correctRow?'highlight':''}">${r.map(i=>{const pl=pyrG.pl[i];return`<div class="pyr-slot ${pl?'filled':''}" onclick="placePyr(${i})">${pl?pl.name.split(' ').pop():i+1}</div>`}).join('')}</div>`).join('')}
+function placePyr(sl){if(pyrG.pl[sl]||pyrG.cu>=pyrG.p.length)return;pyrG.pl[sl]=pyrG.p[pyrG.cu];pyrG.cu++;renderPyr()}
+function subPyr(){if(pyrG.cu<10)return;let cor=0;pyrG.pl.forEach((p,i)=>{if(p&&pyrG.sorted[i]&&p.name===pyrG.sorted[i].name)cor++});markPlayed('pyramid');stats.g++;if(cor>=7){stats.w++;stats.s++;document.getElementById('pyr-hint').innerHTML='<span style="color:var(--green)">🎉 You won! Come back tomorrow!</span>';addDailyScore(true)}else{stats.s=0;document.getElementById('pyr-hint').innerHTML='<span style="color:var(--red)">You lost. Come back again tomorrow.</span>';addDailyScore(false)}save();showModal(cor>=7?'🎉 You Won!':'😢 Game Over','PYRAMID',`${cor}/10`,'Correct','')}
+// Impostor
+const impC=[
+{n:"Played for Barcelona",f:p=>p.clubs?.includes('Barcelona')},
+{n:"Played for Real Madrid",f:p=>p.clubs?.includes('Real Madrid')},
+{n:"Played for Man United",f:p=>p.clubs?.includes('Man United')},
+{n:"Played for Chelsea",f:p=>p.clubs?.includes('Chelsea')},
+{n:"Played for Liverpool",f:p=>p.clubs?.includes('Liverpool')},
+{n:"Played for Juventus",f:p=>p.clubs?.includes('Juventus')},
+{n:"Played for AC Milan",f:p=>p.clubs?.includes('AC Milan')},
+{n:"Played for Inter",f:p=>p.clubs?.includes('Inter')},
+{n:"Played for Bayern",f:p=>p.clubs?.includes('Bayern')},
+{n:"Played for PSG",f:p=>p.clubs?.includes('PSG')},
+{n:"Played for Arsenal",f:p=>p.clubs?.includes('Arsenal')},
+{n:"Played for Atlético",f:p=>p.clubs?.includes('Atlético')},
+{n:"Played for Man City",f:p=>p.clubs?.includes('Man City')},
+{n:"Played for Tottenham",f:p=>p.clubs?.includes('Tottenham')},
+{n:"Played for Leverkusen",f:p=>p.clubs?.includes('Leverkusen')},
+{n:"French Players",f:p=>p.country==='France'},
+{n:"Brazilian Players",f:p=>p.country==='Brazil'},
+{n:"English Players",f:p=>p.country==='England'},
+{n:"Spanish Players",f:p=>p.country==='Spain'},
+{n:"German Players",f:p=>p.country==='Germany'},
+{n:"Portuguese Players",f:p=>p.country==='Portugal'},
+{n:"Argentine Players",f:p=>p.country==='Argentina'},
+{n:"Italian Players",f:p=>p.country==='Italy'},
+{n:"Dutch Players",f:p=>p.country==='Netherlands'},
+{n:"Forward Position",f:p=>p.position==='Forward'},
+{n:"Midfielder Position",f:p=>p.position==='Midfielder'},
+{n:"Defender Position",f:p=>p.position==='Defender'},
+{n:"Goalkeeper Position",f:p=>p.position==='Goalkeeper'}
+].filter(c=>{const cor=players.filter(c.f);return cor.length>=5&&players.filter(p=>!c.f(p)).length>=3});let impG={c:null,ca:[],se:[],co:[]};
+function startImp(){if(!checkPlayable('impostor'))return;document.getElementById('imp-i').style.display='none';document.getElementById('imp-g').style.display='block';initImp()}function resetImp(){if(isPlayedToday('impostor')){alert('You already played this game today! Come back tomorrow 🌅');showPage('home');return}initImp()}
+function initImp(){const c=impC[Math.floor(Math.random()*impC.length)];const cor=players.filter(c.f).sort(()=>Math.random()-.5).slice(0,5);const imp=players.filter(p=>!c.f(p)).sort(()=>Math.random()-.5).slice(0,3);const ca=[...cor,...imp].sort(()=>Math.random()-.5);impG={c,ca,se:[],co:cor.map(p=>p.name)};document.getElementById('imp-result').style.display='none';renderImp()}
+function renderImp(){document.getElementById('imp-c').textContent=`🕵️ ${impG.c.n}`;document.getElementById('imp-gr').innerHTML=impG.ca.map((p,i)=>`<div class="imp-card ${impG.se.includes(i)?'selected':''}" onclick="togImp(${i})">${p.photo?`<img src="${p.photo}" loading="lazy" width="50" height="50" style="width:50px;height:50px;border-radius:50%;object-fit:cover;object-position:top">`:`<span class="fl">${p.flag}</span>`}<div class="nm">${p.name.split(' ').pop()}</div></div>`).join('');document.getElementById('imp-sel').textContent=impG.se.length;document.getElementById('imp-tot').textContent=impG.co.length}
+function togImp(i){const idx=impG.se.indexOf(i);if(idx>-1)impG.se.splice(idx,1);else{if(impG.se.length>=impG.co.length)return;impG.se.push(i)}renderImp()}
+function subImp(){const selN=impG.se.map(i=>impG.ca[i].name);const allCor=selN.every(n=>impG.co.includes(n));const foundAll=selN.length===impG.co.length&&allCor;const impostorsSelected=selN.filter(n=>!impG.co.includes(n)).length;const correctMissed=impG.co.length-selN.filter(n=>impG.co.includes(n)).length;markPlayed('impostor');stats.g++;if(foundAll){stats.w++;stats.s++;addDailyScore(true)}else{stats.s=0;addDailyScore(false)}save();document.querySelectorAll('.imp-card').forEach((card,i)=>{const n=impG.ca[i].name;if(impG.co.includes(n))card.classList.add('correct');else card.classList.add('wrong')});setTimeout(()=>{showModal(foundAll?'🎉 You Won!':'😢 Game Over','IMPOSTOR',foundAll?'✓':'✗',foundAll?'Perfect!':'Try again tomorrow!','');let resultText='';if(!foundAll){if(impostorsSelected>0){resultText+=`You selected <strong style="color:var(--red)">${impostorsSelected} impostor${impostorsSelected>1?'s':''}</strong>`;if(correctMissed>0)resultText+=` and missed <strong style="color:var(--green)">${correctMissed} correct player${correctMissed>1?'s':''}</strong>`}else if(correctMissed>0){resultText+=`You missed <strong style="color:var(--green)">${correctMissed} correct player${correctMissed>1?'s':''}</strong>`}resultText+=`<br><br>Today's category was: <strong style="color:var(--cyan)">${impG.c.n}</strong><br><span style="color:var(--text3)">New game tomorrow!</span>`}else{resultText=`<strong style="color:var(--green)">Perfect!</strong> You found all correct players!<br><br>Today's category was: <strong style="color:var(--cyan)">${impG.c.n}</strong><br><span style="color:var(--text3)">New game tomorrow!</span>`}document.getElementById('imp-result-text').innerHTML=resultText;document.getElementById('imp-result').style.display='block'},800)}
+updateGameCards();
+updateDailyScore();
+
+// ===== SUPABASE + PROFILE =====
+const SB_URL='https://dhbzhifcmmijgrmyrhzy.supabase.co';
+const SB_KEY='sb_publishable_lvpLZ-p-EPd4ePStJ-Yc2g_OSzaBO-G';
+let sbClient=null;
+let sbUser=null;
+let profData={username:localStorage.getItem('prof_name')||'Player',avatar:localStorage.getItem('prof_avatar')||null};
+
+function initSB(){
+  try{
+    sbClient=supabase.createClient(SB_URL,SB_KEY);
+    sbClient.auth.getSession().then(({data:{session}})=>{
+      if(session){sbUser=session.user;loadProfFromDB();}
+      renderProfUI();
+    });
+    sbClient.auth.onAuthStateChange((event,session)=>{
+      if(event==='SIGNED_IN'){sbUser=session.user;document.getElementById('auth-email-disp').textContent=sbUser.email;mergeToDB();}
+      else if(event==='SIGNED_OUT'){sbUser=null;}
+      renderProfUI();
+    });
+  }catch(e){console.warn('Supabase init failed',e);}
+}
+
+async function loadProfFromDB(){
+  if(!sbClient||!sbUser)return;
+  const{data}=await sbClient.from('profiles').select('*').eq('user_id',sbUser.id).single();
+  if(data){
+    if(data.username)profData.username=data.username;
+    if(data.avatar_url)profData.avatar=data.avatar_url;
+    localStorage.setItem('prof_name',profData.username);
+  }
+  renderProfUI();
+}
+
+async function mergeToDB(){
+  if(!sbClient||!sbUser)return;
+  const payload={user_id:sbUser.id,username:profData.username,wins:stats.w,losses:stats.g-stats.w,streak:stats.s,updated_at:new Date().toISOString()};
+  if(profData.avatar&&!profData.avatar.startsWith('data:')){payload.avatar_url=profData.avatar;}
+  await sbClient.from('profiles').upsert(payload,{onConflict:'user_id'});
+  if(profData.avatar&&profData.avatar.startsWith('data:')){
+    const blob=await(await fetch(profData.avatar)).blob();
+    const{data}=await sbClient.storage.from('avatars').upload(sbUser.id+'/avatar.jpg',blob,{upsert:true,contentType:'image/jpeg'});
+    if(data){
+      const{data:u}=sbClient.storage.from('avatars').getPublicUrl(sbUser.id+'/avatar.jpg');
+      profData.avatar=u.publicUrl+'?t='+Date.now();
+      localStorage.setItem('prof_avatar',profData.avatar);
+      await sbClient.from('profiles').upsert({user_id:sbUser.id,avatar_url:profData.avatar,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    }
+  }
+}
+
+function renderProfUI(){
+  const av=document.getElementById('prof-avatar');
+  if(av){
+    if(profData.avatar){av.innerHTML=`<img src="${profData.avatar}" style="width:100%;height:100%;object-fit:cover">`;}
+    else{av.innerHTML='<span id="prof-avatar-emoji">⚽</span>';}
+  }
+  const nt=document.getElementById('prof-name-text');
+  if(nt)nt.textContent=profData.username;
+  const gp=document.getElementById('auth-guest-panel');
+  const up=document.getElementById('auth-user-panel');
+  const ed=document.getElementById('auth-email-disp');
+  if(sbUser){if(gp)gp.style.display='none';if(up)up.style.display='block';if(ed)ed.textContent=sbUser.email;}
+  else{if(gp)gp.style.display='block';if(up)up.style.display='none';}
+}
+
+function editProfName(){
+  document.getElementById('prof-name-display').style.display='none';
+  const inp=document.getElementById('prof-name-input');
+  inp.style.display='block';inp.value=profData.username;inp.focus();inp.select();
+}
+async function saveProfName(){
+  const inp=document.getElementById('prof-name-input');
+  const name=(inp.value.trim()||'Player').toUpperCase();
+  profData.username=name;localStorage.setItem('prof_name',name);
+  inp.style.display='none';document.getElementById('prof-name-display').style.display='inline-flex';
+  document.getElementById('prof-name-text').textContent=name;
+  if(sbClient&&sbUser)await sbClient.from('profiles').upsert({user_id:sbUser.id,username:name,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+}
+
+function handleAvatarUpload(input){
+  const file=input.files[0];if(!file)return;
+  const img=new Image(),reader=new FileReader();
+  reader.onload=e=>{
+    img.onload=async()=>{
+      const canvas=document.createElement('canvas');canvas.width=200;canvas.height=200;
+      const ctx=canvas.getContext('2d');
+      const size=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-size)/2,(img.height-size)/2,size,size,0,0,200,200);
+      const b64=canvas.toDataURL('image/jpeg',.85);
+      profData.avatar=b64;localStorage.setItem('prof_avatar',b64);
+      renderProfUI();
+      if(sbClient&&sbUser){
+        const blob=await(await fetch(b64)).blob();
+        const{data}=await sbClient.storage.from('avatars').upload(sbUser.id+'/avatar.jpg',blob,{upsert:true,contentType:'image/jpeg'});
+        if(data){
+          const{data:u}=sbClient.storage.from('avatars').getPublicUrl(sbUser.id+'/avatar.jpg');
+          profData.avatar=u.publicUrl+'?t='+Date.now();
+          localStorage.setItem('prof_avatar',profData.avatar);
+          await sbClient.from('profiles').upsert({user_id:sbUser.id,avatar_url:profData.avatar,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+          renderProfUI();
+        }
+      }
+    };img.src=e.target.result;
+  };reader.readAsDataURL(file);input.value='';
+}
+
+async function sbSignIn(){
+  const email=document.getElementById('auth-email-inp').value.trim();
+  if(!/\S+@\S+\.\S+/.test(email)){alert('Enter a valid email');return;}
+  const btn=document.getElementById('auth-send-btn');btn.textContent='Sending...';btn.disabled=true;
+  const{error}=await sbClient.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}});
+  if(error){btn.textContent='Send Magic Link';btn.disabled=false;alert(error.message);}
+  else{btn.textContent='✓ Check your inbox!';document.getElementById('auth-email-inp').value='';}
+}
+async function sbSignOut(){await sbClient.auth.signOut();}
+
+initSB();
+</script>
+</body>
+</html>

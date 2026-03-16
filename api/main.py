@@ -443,17 +443,35 @@ async def sync_stats(body: StatsSync, request: Request, user=Depends(get_current
 @app.get("/api/leaderboard")
 async def leaderboard(request: Request):
     check_rate(f"lb:{get_client_ip(request)}", 10)
+    # Resolve caller's user_id if authenticated (best-effort, no error on bad token)
+    my_user_id: int | None = None
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            my_user_id = decode_jwt(auth[7:])["sub"]
+        except Exception:
+            pass
+
     now = time.time()
-    if _lb_cache["data"] is not None and now - _lb_cache["ts"] < _LB_CACHE_TTL:
-        return _lb_cache["data"]
+    cached = _lb_cache["data"]
+    if cached is not None and now - _lb_cache["ts"] < _LB_CACHE_TTL and my_user_id is None:
+        return cached
+
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT username, wins, losses, streak, avatar_url "
+            "SELECT user_id, username, wins, losses, streak, avatar_url "
             "FROM profiles ORDER BY (wins*100 + streak*50) DESC LIMIT 20"
         )
-    result = [dict(r) for r in rows]
-    _lb_cache["data"] = result
-    _lb_cache["ts"] = now
+    result = []
+    for r in rows:
+        row = dict(r)
+        row["is_me"] = (my_user_id is not None and row["user_id"] == my_user_id)
+        del row["user_id"]
+        result.append(row)
+
+    if my_user_id is None:
+        _lb_cache["data"] = result
+        _lb_cache["ts"] = now
     return result
 
 

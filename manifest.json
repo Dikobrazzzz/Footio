@@ -1,0 +1,17 @@
+{
+  "name": "Footio — Daily Football Games",
+  "short_name": "Footio",
+  "description": "6 daily football mini-games. Test your knowledge every day.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1a",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "/images/banner.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

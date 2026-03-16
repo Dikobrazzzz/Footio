@@ -457,6 +457,19 @@ async def leaderboard(request: Request):
     return result
 
 
+@app.get("/api/leaderboard/rank")
+async def leaderboard_rank(user: dict = Depends(get_current_user)):
+    async with pool.acquire() as conn:
+        rank = await conn.fetchval(
+            "SELECT COUNT(*) + 1 FROM profiles "
+            "WHERE (wins*100 + streak*50) > ("
+            "  SELECT wins*100 + streak*50 FROM profiles WHERE user_id=$1"
+            ")",
+            user["sub"],
+        )
+    return {"rank": rank}
+
+
 @app.get("/api/health")
 async def health():
     try:

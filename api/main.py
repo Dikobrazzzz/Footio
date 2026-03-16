@@ -6,6 +6,8 @@ import hmac
 import aiofiles
 import time
 import logging
+import logging.handlers
+import traceback
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from collections import defaultdict
@@ -18,13 +20,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+# ── Logging setup ────────────────────────────────────────────────────────────
+_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
+_LOG_DATE   = "%Y-%m-%d %H:%M:%S"
+logging.basicConfig(level=logging.INFO, format=_LOG_FORMAT, datefmt=_LOG_DATE)
 logger = logging.getLogger("footio")
 
+_log_dir = "/app/logs"
+try:
+    os.makedirs(_log_dir, exist_ok=True)
+    _fh = logging.handlers.RotatingFileHandler(
+        os.path.join(_log_dir, "api.log"),
+        maxBytes=10 * 1024 * 1024,  # 10 MB
+        backupCount=5,
+    )
+    _fh.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE))
+    logging.getLogger().addHandler(_fh)
+except Exception as _e:
+    logger.warning("Could not set up file logging: %s", _e)
+
+# ── Config ───────────────────────────────────────────────────────────────────
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://tma:tma@db:5432/footio")
 JWT_SECRET = os.environ.get("JWT_SECRET", "")
 if not JWT_SECRET or len(JWT_SECRET) < 32:
@@ -89,8 +104,54 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS idx_ml_expires ON magic_links(expires_at)"
         )
         await conn.execute(
-            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS played_today JSONB NOT NULL DEFAULT '{}';",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS played_today JSONB NOT NULL DEFAULT '{}';"
         )
+        # ── Analytics tables (002_analytics) ─────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id          BIGSERIAL PRIMARY KEY,
+                session_id  TEXT NOT NULL UNIQUE,
+                user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                ip          TEXT,
+                user_agent  TEXT,
+                referrer    TEXT,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                last_seen   TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS game_plays (
+                id          BIGSERIAL PRIMARY KEY,
+                session_id  TEXT NOT NULL,
+                user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                game        TEXT NOT NULL,
+                result      TEXT NOT NULL,
+                duration_s  INT,
+                played_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS page_events (
+                id          BIGSERIAL PRIMARY KEY,
+                session_id  TEXT NOT NULL,
+                user_id     BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                event       TEXT NOT NULL,
+                data        JSONB NOT NULL DEFAULT '{}',
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """)
+        for idx_sql in [
+            "CREATE INDEX IF NOT EXISTS idx_sessions_sid     ON sessions(session_id)",
+            "CREATE INDEX IF NOT EXISTS idx_sessions_user    ON sessions(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_gp_game          ON game_plays(game)",
+            "CREATE INDEX IF NOT EXISTS idx_gp_user          ON game_plays(user_id)",
+            "CREATE INDEX IF NOT EXISTS idx_gp_played_at     ON game_plays(played_at)",
+            "CREATE INDEX IF NOT EXISTS idx_pe_event         ON page_events(event)",
+            "CREATE INDEX IF NOT EXISTS idx_pe_session       ON page_events(session_id)",
+            "CREATE INDEX IF NOT EXISTS idx_pe_created       ON page_events(created_at)",
+        ]:
+            await conn.execute(idx_sql)
     logger.info("Footio API started, DB pool ready")
     yield
     logger.info("Footio API shutting down")
@@ -108,6 +169,18 @@ app.add_middleware(
 )
 
 
+# ── Exception handler: log full stack trace for unhandled 500s ───────────────
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled exception %s %s\n%s",
+        request.method, request.url.path,
+        traceback.format_exc(),
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+# ── HTTP middleware: access log + slow query warning ─────────────────────────
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
@@ -115,6 +188,8 @@ async def log_requests(request: Request, call_next):
     elapsed = round((time.time() - start) * 1000)
     ip = get_client_ip(request)
     logger.info("%s %s %s %dms %s", request.method, request.url.path, response.status_code, elapsed, ip)
+    if elapsed > 500:
+        logger.warning("SLOW %s %s %dms", request.method, request.url.path, elapsed)
     return response
 
 
@@ -292,7 +367,7 @@ async def verify_code(body: VerifyOTP, request: Request):
 
     jwt_token = make_jwt(row["user_id"], row["email"])
     logger.info("User verified: %s (user_id=%d)", row["email"], row["user_id"])
-    return {"token": jwt_token, "email": row["email"]}
+    return {"token": jwt_token, "email": row["email"], "id": row["user_id"]}
 
 
 @app.get("/api/auth/me")
@@ -391,7 +466,6 @@ async def sync_stats(body: StatsSync, request: Request, user=Depends(get_current
     if body.wins < 0 or body.losses < 0 or body.streak < 0:
         raise HTTPException(400, "Invalid stats")
 
-    ip = get_client_ip(request)
     check_rate(f"sync:{user['sub']}", 30)
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -425,11 +499,9 @@ async def sync_stats(body: StatsSync, request: Request, user=Depends(get_current
             if isinstance(v, dict): return v.get("d", "")
             return ""
 
-        # Keep only today's entries from server, merge with client (union)
         merged_played = {g: v for g, v in server_played.items() if _entry_date(v) == today}
         for g, v in (body.played_today or {}).items():
             if g in VALID_GAMES and _entry_date(v) == today:
-                # Prefer client entry (it has win/loss info)
                 merged_played[g] = v
 
         await conn.execute(
@@ -443,7 +515,6 @@ async def sync_stats(body: StatsSync, request: Request, user=Depends(get_current
 @app.get("/api/leaderboard")
 async def leaderboard(request: Request):
     check_rate(f"lb:{get_client_ip(request)}", 10)
-    # Resolve caller's user_id if authenticated (best-effort, no error on bad token)
     my_user_id: int | None = None
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
@@ -486,6 +557,69 @@ async def leaderboard_rank(user: dict = Depends(get_current_user)):
             user["sub"],
         )
     return {"rank": rank}
+
+
+# ── Analytics ─────────────────────────────────────────────────────────────────
+VALID_EVENTS = {
+    "page_view", "game_started", "game_won", "game_lost",
+    "share", "auth_started", "auth_completed",
+    "leaderboard_view", "profile_view",
+}
+
+
+class EventBatch(BaseModel):
+    session_id: str
+    user_id: int | None = None
+    referrer: str | None = None
+    events: list[dict]
+
+
+@app.post("/api/events")
+async def track_events(body: EventBatch, request: Request):
+    check_rate(f"ev:{get_client_ip(request)}", 60)
+
+    sid = body.session_id[:64]
+    real_ip = get_client_ip(request)
+    real_ua = request.headers.get("User-Agent", "")[:512]
+    referrer = (body.referrer or "")[:512] or None
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO sessions(session_id, user_id, ip, user_agent, referrer)
+            VALUES($1,$2,$3,$4,$5)
+            ON CONFLICT(session_id) DO UPDATE
+              SET last_seen = now(),
+                  user_id   = COALESCE($2, sessions.user_id)
+            """,
+            sid, body.user_id, real_ip, real_ua, referrer,
+        )
+        for ev in body.events[:50]:
+            event_name = str(ev.get("event", ""))[:64]
+            if event_name not in VALID_EVENTS:
+                continue
+            event_data = ev.get("data") or {}
+
+            if event_name in ("game_won", "game_lost"):
+                game = str(event_data.get("game", ""))[:32]
+                result = "won" if event_name == "game_won" else "lost"
+                duration = event_data.get("duration_s")
+                if isinstance(duration, (int, float)):
+                    duration = int(duration)
+                else:
+                    duration = None
+                if game in VALID_GAMES:
+                    await conn.execute(
+                        "INSERT INTO game_plays(session_id, user_id, game, result, duration_s) "
+                        "VALUES($1,$2,$3,$4,$5)",
+                        sid, body.user_id, game, result, duration,
+                    )
+
+            await conn.execute(
+                "INSERT INTO page_events(session_id, user_id, event, data) VALUES($1,$2,$3,$4)",
+                sid, body.user_id, event_name, json.dumps(event_data),
+            )
+    return {"ok": True}
 
 
 @app.get("/api/health")
